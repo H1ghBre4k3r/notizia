@@ -9,6 +9,29 @@ This project demonstrates message passing patterns in Rust using:
 - Custom `Task` and `Mailbox` abstractions
 - Macro-based task spawning with `proc!` and `recv!`
 
+## Example
+
+```rust
+// Create a task that sums up numbers it receives
+let task: Task<u32, u32> = proc! {
+    let mut total = 0;
+    for _ in 0..5 {
+        let val = recv!();  // Receive a value
+        total += val;
+    }
+    total  // Return the sum
+};
+
+// Send messages to the task
+for i in 1..=5 {
+    task.send(i);
+}
+
+// Join the task and get the result
+let result = task.join();
+assert_eq!(result, 15);  // 1 + 2 + 3 + 4 + 5 = 15
+```
+
 ## Building
 
 ```bash
