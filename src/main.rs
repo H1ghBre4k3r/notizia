@@ -1,7 +1,7 @@
 use std::{
     sync::{
-        mpsc::{channel, Receiver, Sender},
         Arc,
+        mpsc::{Receiver, Sender, channel},
     },
     thread::JoinHandle,
 };
@@ -28,10 +28,6 @@ where
     }
 }
 
-struct SpawnedTask<T> {
-    receiver: Receiver<T>,
-}
-
 macro_rules! proc {
     ($($content:tt)*) => {
         spawn_task(move |_receiver| {
@@ -48,7 +44,7 @@ fn spawn_task<M, R, Func>(func: Func) -> Task<M, R>
 where
     M: Send + 'static,
     R: Send + 'static,
-    Func: Fn(Receiver<M>) -> R + Send + 'static,
+    Func: FnOnce(Receiver<M>) -> R + Send + 'static,
 {
     let (sender, receiver) = channel::<M>();
     let mb = Mailbox(sender);
@@ -61,6 +57,7 @@ where
 }
 
 fn main() {
+    let (sender, receiver) = channel::<u32>();
     let task: Task<u32, u32> = proc! {
         let mut counter = 0;
         for _ in 0..10 {
@@ -68,6 +65,7 @@ fn main() {
 
             println!("received {val}");
             counter += val;
+            sender.send(counter).unwrap();
         }
 
         counter
@@ -76,11 +74,13 @@ fn main() {
     let next_task: Task<(), u32> = proc! {
         for i in 0..10 {
             task.send(i);
+            let current_counter = receiver.recv().unwrap();
+            println!("current counter: {current_counter}");
         }
 
-        let result = task.join();
-        result
+        task.join()
     };
 
-    next_task.join();
+    let result = next_task.join();
+    println!("OH YES! {result}")
 }
