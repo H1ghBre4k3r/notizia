@@ -27,7 +27,7 @@ where
 #[macro_export]
 macro_rules! proc {
     ($($content:tt)*) => {
-        message_passing::spawn_task(move |_receiver| {
+        notizia::spawn_task(move |_receiver| {
             #[allow(unused_macros)]
             macro_rules! recv {
                 () => { _receiver.recv().unwrap() }

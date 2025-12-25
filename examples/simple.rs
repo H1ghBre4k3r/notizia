@@ -1,6 +1,6 @@
 use std::sync::mpsc::channel;
 
-use message_passing::{Task, proc};
+use notizia::{Task, proc};
 
 fn main() {
     let (sender, receiver) = channel::<u32>();
