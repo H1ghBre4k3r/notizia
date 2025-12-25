@@ -6,4 +6,17 @@ authors = ["Louis Meyer (H1ghBre4k3r) <h1ghbe4k3r@dev.bre4k3r.de>"]
 license = "MIT"
 readme = "README.md"
 
+[features]
+default = []
+tokio = ["dep:tokio"]
+
+[[example]]
+name = "simple"
+required-features = []
+
+[[example]]
+name = "async"
+required-features = ["tokio"]
+
 [dependencies]
+tokio = { version = "1.48.0", features = ["full"], optional = true }
