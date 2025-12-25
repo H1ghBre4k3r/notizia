@@ -1,19 +1,21 @@
-# Agent Guide: message-passing
+# Agent Guide: notizia
 
 ## Project Overview
 
-This is a Rust project implementing message passing between threads using channels. It provides a custom task abstraction with mailbox-based communication and macro-based task spawning.
+This is a Rust library implementing message passing between threads using channels. It provides a custom task abstraction with mailbox-based communication and macro-based task spawning.
 
-**Project Type**: Rust (Cargo, Edition 2024)
+**Project Type**: Rust Library (Cargo, Edition 2024)
+
+**Library Name**: `notizia`
 
 ## Essential Commands
 
 ```bash
-# Build the project
+# Build the library
 cargo build
 
-# Run the main binary
-cargo run
+# Run examples
+cargo run --example simple
 
 # Check for errors without building
 cargo check
@@ -29,19 +31,24 @@ cargo fmt
 
 # Build for release
 cargo build --release
+
+# Generate documentation
+cargo doc --open
 ```
 
 ## Code Organization
 
 ```
-message-passing/
+notizia/
 ├── Cargo.toml          # Project configuration
 ├── .gitignore         # Git ignore (ignores /target)
-└── src/
-    └── main.rs        # All source code
+├── src/
+│   └── lib.rs          # Library code
+└── examples/
+    └── simple.rs       # Example usage
 ```
 
-The project is currently a single-file application. The main code is in `src/main.rs`.
+The library code is in `src/lib.rs`. See `examples/simple.rs` for usage examples.
 
 ## Core Components
 
@@ -85,7 +92,7 @@ let task: Task<u32, u32> = proc! {
 **`spawn_task<M, R, Func>(func: Func) -> Task<M, R>`** - Low-level task spawning
 - `M`: Message type (must be `Send + 'static`)
 - `R`: Return type (must be `Send + 'static`)
-- `Func`: Closure taking `Receiver<M>` and returning `R` (must be `Fn + Send + 'static`)
+- `Func`: Closure taking `Receiver<M>` and returning `R` (must be `FnOnce + Send + 'static`)
 
 ## Code Patterns
 
@@ -143,7 +150,7 @@ let result = task_clone.join();
 task.send(1); // This works
 ```
 
-**Closure trait bounds**: When using `spawn_task`, the closure must implement `Fn`, not `FnOnce`. This means captured variables must be usable multiple times. The current code has a compilation error (E0507) at `src/main.rs:81` related to moving `task` out of an `Fn` closure when calling `task.join()`.
+**Closure trait bounds**: When using `spawn_task`, the closure implements `FnOnce`, meaning it can only be called once. This allows consuming captured variables.
 
 ### Type Constraints
 
@@ -157,13 +164,35 @@ task.send(1); // This works
 
 The `recv!()` macro is only available inside `proc!` blocks. It defines a local macro within the spawned closure.
 
-## Current Issues
+## Library Usage
 
-There is a compilation error in `src/main.rs:81`:
-- **Error**: E0507 - Cannot move out of `task` in an `Fn` closure
-- **Location**: When calling `task.join()` inside the `next_task` proc block
-- **Cause**: `Task::join()` takes ownership of `self`, but closures used in `spawn_task` must be `Fn` (callable multiple times), not `FnOnce` (callable once)
-- **Suggested fix**: Consider cloning the task before joining, or redesign the API to support multiple joins
+Add this to your `Cargo.toml`:
+
+```toml
+[dependencies]
+notizia = "0.1"
+```
+
+Then use the library:
+
+```rust
+use notizia::{Task, proc};
+
+let task: Task<u32, u32> = proc! {
+    let mut total = 0;
+    for _ in 0..5 {
+        let val = recv!();
+        total += val;
+    }
+    total
+};
+
+for i in 1..=5 {
+    task.send(i);
+}
+
+let result = task.join();
+```
 
 ## Dependencies
 
