@@ -98,7 +98,7 @@ notizia/
 - All tests in `#[cfg(test)] mod tests`
 
 **tokio_impl.rs** - Asynchronous API:
-- `AsyncMailbox<T>`: Internal struct wrapping `tokio::sync::mpsc::Sender<T>` (private)
+- `AsyncMailbox<T>`: Internal struct wrapping `tokio::sync::mpsc::UnboundedSender<T>` (private)
 - `AsyncTask<M, R>`: Public async task type
 - `spawn_async_task<M, R, Output, Func>(func) -> AsyncTask<M, Output>`: Spawns async task
 - `async_proc!` macro: User-friendly async task creation syntax
@@ -133,7 +133,7 @@ Both implementations require:
 ### Channel Buffer Sizes
 
 - **std**: Uses unbounded channel (`channel::<M>()`)
-- **tokio**: Uses bounded channel with capacity 64 (`channel::<M>(64)`)
+- **tokio**: Uses unbounded channel (`unbounded_channel::<M>()`)
 
 ### Macro Patterns
 

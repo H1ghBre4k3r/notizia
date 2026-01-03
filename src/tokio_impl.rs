@@ -1,11 +1,11 @@
 use std::future::Future;
 use tokio::{
-    sync::mpsc::{Receiver, Sender, channel},
+    sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel},
     task::JoinHandle,
 };
 
 #[derive(Clone)]
-struct AsyncMailbox<T>(Sender<T>);
+struct AsyncMailbox<T>(UnboundedSender<T>);
 
 pub struct AsyncTask<M, R> {
     mailbox: AsyncMailbox<M>,
@@ -17,7 +17,7 @@ where
     T: Clone,
 {
     pub async fn send(&self, payload: T) {
-        self.mailbox.0.send(payload).await.unwrap()
+        self.mailbox.0.send(payload).unwrap()
     }
 
     pub async fn join(self) -> R {
@@ -43,9 +43,9 @@ where
     M: Send + 'static,
     R: Send + 'static + Future<Output = Output>,
     Output: Send + 'static,
-    Func: FnOnce(Receiver<M>) -> R + Send + 'static,
+    Func: FnOnce(UnboundedReceiver<M>) -> R + Send + 'static,
 {
-    let (sender, receiver) = channel::<M>(64);
+    let (sender, receiver) = unbounded_channel::<M>();
     let mb = AsyncMailbox(sender);
     let handle = tokio::spawn(func(receiver));
 
@@ -153,7 +153,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_async_empty_task() {
-        let task = spawn_async_task(|_receiver: tokio::sync::mpsc::Receiver<()>| async move { 42 });
+        let task = spawn_async_task(
+            |_receiver: tokio::sync::mpsc::UnboundedReceiver<()>| async move { 42 },
+        );
 
         let result = task.join().await;
         assert_eq!(result, 42);
