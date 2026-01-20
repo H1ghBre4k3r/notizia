@@ -1,6 +1,6 @@
-use mp::{Proc, Runnable, recv, send, spawn};
+use notizia::{Proc, Runnable, recv, send, spawn};
 
-#[mp_gen::Proc(Bar)]
+#[notizia_gen::Proc(Bar)]
 struct MyProc {}
 
 #[derive(Debug, Clone)]

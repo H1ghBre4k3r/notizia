@@ -94,7 +94,7 @@ where
     }
 }
 
-/// Spawn a task which implements `mp::Runnable`.
+/// Spawn a task which implements `notizia::Runnable`.
 #[macro_export]
 macro_rules! spawn {
     ($ident:ident) => {
@@ -102,7 +102,7 @@ macro_rules! spawn {
     };
 }
 
-/// Send a message to a task which what spawned by `mp::spawn!()`.
+/// Send a message to a task which what spawned by `notizia::spawn!()`.
 #[macro_export]
 macro_rules! send {
     ($task:ident, $msg:expr) => {

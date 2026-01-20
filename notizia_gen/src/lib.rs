@@ -23,8 +23,8 @@ pub fn Proc(attrs: TokenStream, input: TokenStream) -> TokenStream {
     let generated = quote! {
         #ast
 
-        impl mp::Proc<#item> for #name {
-            fn __setup(&self, receiver: mp::tokio::sync::mpsc::UnboundedReceiver<#item>) -> impl std::future::Future<Output = ()> + Send {
+        impl notizia::Proc<#item> for #name {
+            fn __setup(&self, receiver: notizia::tokio::sync::mpsc::UnboundedReceiver<#item>) -> impl std::future::Future<Output = ()> + Send {
                 async move {
                     let mb = self.mailbox();
 
@@ -34,19 +34,19 @@ pub fn Proc(attrs: TokenStream, input: TokenStream) -> TokenStream {
                 }
             }
 
-            fn mailbox(&self) -> mp::Mailbox<#item> {
+            fn mailbox(&self) -> notizia::Mailbox<#item> {
                 #mod_name::#mailbox.get()
             }
 
-            fn run(self) -> mp::TaskHandle<#item, impl Future<Output = ()>> {
+            fn run(self) -> notizia::TaskHandle<#item, impl Future<Output = ()>> {
                 let (sender, receiver) = tokio::sync::mpsc::unbounded_channel::<#item>();
 
-                let handle = #mod_name::#mailbox.scope(mp::Mailbox::new(), async move {
+                let handle = #mod_name::#mailbox.scope(notizia::Mailbox::new(), async move {
                     let handle = self.__setup(receiver);
                     handle.await
                 });
 
-                mp::TaskHandle::new(sender, handle)
+                notizia::TaskHandle::new(sender, handle)
             }
         }
 
@@ -55,7 +55,7 @@ pub fn Proc(attrs: TokenStream, input: TokenStream) -> TokenStream {
             use super::*;
 
             tokio::task_local! {
-                pub static #mailbox: mp::Mailbox<#item>;
+                pub static #mailbox: notizia::Mailbox<#item>;
             }
         }
     };
