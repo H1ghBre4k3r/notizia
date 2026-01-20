@@ -1,0 +1,8 @@
+[package]
+name = "mp"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+mp_gen = { path = "../mp_gen/" }
+tokio = { version = "1.49.0", features = ["full"] }
