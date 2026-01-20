@@ -1,5 +1,5 @@
 use quote::{format_ident, quote};
-use syn::{ItemEnum, ItemStruct, parse_macro_input};
+use syn::{parse_macro_input, ItemEnum, ItemStruct};
 
 use proc_macro::TokenStream;
 
@@ -24,12 +24,14 @@ pub fn Proc(attrs: TokenStream, input: TokenStream) -> TokenStream {
         #ast
 
         impl mp::Proc<#item> for #name {
-            async fn __setup(&self, receiver: mp::tokio::sync::mpsc::UnboundedReceiver<#item>) {
-                let mb = self.mailbox();
+            fn __setup(&self, receiver: mp::tokio::sync::mpsc::UnboundedReceiver<#item>) -> impl std::future::Future<Output = ()> + Send {
+                async move {
+                    let mb = self.mailbox();
 
-                mb.set_receiver(receiver);
+                    mb.set_receiver(receiver).await;
 
-                self.start().await
+                    self.start().await
+                }
             }
 
             fn mailbox(&self) -> mp::Mailbox<#item> {

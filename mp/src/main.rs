@@ -10,8 +10,8 @@ enum Bar {
 }
 
 impl Runnable<Bar> for MyProc {
-    async fn start(&self) -> () {
-        async {
+    async fn start(&self) {
+        async move {
             let val = recv!(self);
             println!("received {val:?}")
         }
