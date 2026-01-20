@@ -1,12 +1,14 @@
 use std::future::Future;
 use std::sync::Arc;
 
-use tokio::sync::mpsc::error::SendError;
 use tokio::sync::Mutex;
+use tokio::sync::mpsc::error::SendError;
 use tokio::{
     sync::mpsc::{UnboundedReceiver, UnboundedSender},
     task::futures::TaskLocalFuture,
 };
+
+pub use notizia_gen::Proc;
 
 pub use tokio;
 
@@ -53,8 +55,8 @@ pub trait Runnable<T>: Send + Sync {
     fn start(&self) -> impl Future<Output = ()> + Send;
 }
 
-pub trait Proc<T>: Runnable<T> 
-where 
+pub trait Task<T>: Runnable<T>
+where
     T: Send,
 {
     fn __setup(&self, receiver: UnboundedReceiver<T>) -> impl Future<Output = ()> + Send;

@@ -1,5 +1,5 @@
 use quote::{format_ident, quote};
-use syn::{parse_macro_input, ItemEnum, ItemStruct};
+use syn::{ItemEnum, ItemStruct, parse_macro_input};
 
 use proc_macro::TokenStream;
 
@@ -23,7 +23,7 @@ pub fn Proc(attrs: TokenStream, input: TokenStream) -> TokenStream {
     let generated = quote! {
         #ast
 
-        impl notizia::Proc<#item> for #name {
+        impl notizia::Task<#item> for #name {
             fn __setup(&self, receiver: notizia::tokio::sync::mpsc::UnboundedReceiver<#item>) -> impl std::future::Future<Output = ()> + Send {
                 async move {
                     let mb = self.mailbox();
