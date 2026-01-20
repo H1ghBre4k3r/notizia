@@ -64,7 +64,6 @@ pub trait Proc<T>: Runnable<T> {
         self.mailbox().recv().await
     }
 }
-
 pub struct TaskHandle<T, F>
 where
     T: 'static,
@@ -92,6 +91,7 @@ where
     }
 }
 
+/// Spawn a task which implements `mp::Runnable`.
 #[macro_export]
 macro_rules! spawn {
     ($ident:ident) => {
@@ -99,9 +99,17 @@ macro_rules! spawn {
     };
 }
 
+/// Send a message to a task which what spawned by `mp::spawn!()`.
 #[macro_export]
 macro_rules! send {
     ($task:ident, $msg:expr) => {
         $task.send($msg)
+    };
+}
+
+#[macro_export]
+macro_rules! recv {
+    ($ident:ident) => {
+        $ident.recv().await
     };
 }

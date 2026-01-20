@@ -23,7 +23,7 @@ pub fn Proc(attrs: TokenStream, input: TokenStream) -> TokenStream {
     let generated = quote! {
         #ast
 
-        impl Proc<#item> for #name {
+        impl mp::Proc<#item> for #name {
             async fn __setup(&self, receiver: mp::tokio::sync::mpsc::UnboundedReceiver<#item>) {
                 let mb = self.mailbox();
 

@@ -1,4 +1,4 @@
-use mp::{Proc, Runnable, send, spawn};
+use mp::{Proc, Runnable, recv, send, spawn};
 
 #[mp_gen::Proc(Bar)]
 struct MyProc {}
@@ -12,7 +12,7 @@ enum Bar {
 impl Runnable<Bar> for MyProc {
     async fn start(&self) -> () {
         async {
-            let val = self.recv().await;
+            let val = recv!(self);
             println!("received {val:?}")
         }
         .await
