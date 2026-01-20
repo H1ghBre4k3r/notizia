@@ -1,4 +1,4 @@
-use mp::{Proc, Runnable};
+use mp::{Proc, Runnable, send, spawn};
 
 #[mp_gen::Proc(Bar)]
 struct MyProc {}
@@ -12,35 +12,10 @@ enum Bar {
 impl Runnable<Bar> for MyProc {
     async fn start(&self) -> () {
         async {
-            let val = self.mailbox().recv().await;
+            let val = self.recv().await;
             println!("received {val:?}")
         }
         .await
-    }
-}
-
-impl Proc<Bar> for MyProc {
-    async fn __setup(&self, receiver: mp::tokio::sync::mpsc::UnboundedReceiver<Bar>) {
-        let mb = self.mailbox();
-
-        mb.set_receiver(receiver);
-
-        self.start().await
-    }
-
-    fn mailbox(&self) -> mp::Mailbox<Bar> {
-        __MyProc_gen::MyProcMailbox.get()
-    }
-
-    fn run(self) -> mp::TaskHandle<Bar, impl Future<Output = ()>> {
-        let (sender, receiver) = tokio::sync::mpsc::unbounded_channel::<Bar>();
-
-        let handle = __MyProc_gen::MyProcMailbox.scope(mp::Mailbox::new(), async move {
-            let handle = self.__setup(receiver);
-            handle.await
-        });
-
-        mp::TaskHandle::new(sender, handle)
     }
 }
 
@@ -48,9 +23,11 @@ impl Proc<Bar> for MyProc {
 async fn main() {
     let task = MyProc {};
 
-    let handle = task.run();
+    let handle = spawn!(task);
 
-    handle.send(Bar::Yes);
+    if let Err(e) = send!(handle, Bar::Yes) {
+        eprintln!("sending failed: {e}")
+    }
 
     handle.join().await
 }

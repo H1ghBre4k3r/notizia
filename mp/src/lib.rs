@@ -59,6 +59,10 @@ pub trait Proc<T>: Runnable<T> {
     fn mailbox(&self) -> Mailbox<T>;
 
     fn run(self) -> TaskHandle<T, impl Future<Output = ()>>;
+
+    async fn recv(&self) -> T {
+        self.mailbox().recv().await
+    }
 }
 
 pub struct TaskHandle<T, F>
@@ -86,4 +90,18 @@ where
     pub fn send(&self, msg: T) -> Result<(), SendError<T>> {
         self.sender.send(msg)
     }
+}
+
+#[macro_export]
+macro_rules! spawn {
+    ($ident:ident) => {
+        $ident.run()
+    };
+}
+
+#[macro_export]
+macro_rules! send {
+    ($task:ident, $msg:expr) => {
+        $task.send($msg)
+    };
 }

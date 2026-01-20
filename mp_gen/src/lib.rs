@@ -23,11 +23,31 @@ pub fn Proc(attrs: TokenStream, input: TokenStream) -> TokenStream {
     let generated = quote! {
         #ast
 
-        // impl Proc<#item> for #name {
-        //     fn mailbox(&self) -> Mailbox<#item> {
-        //         #mod_name::#mailbox.get()
-        //     }
-        // }
+        impl Proc<#item> for #name {
+            async fn __setup(&self, receiver: mp::tokio::sync::mpsc::UnboundedReceiver<#item>) {
+                let mb = self.mailbox();
+
+                mb.set_receiver(receiver);
+
+                self.start().await
+            }
+
+            fn mailbox(&self) -> mp::Mailbox<#item> {
+                #mod_name::#mailbox.get()
+            }
+
+            fn run(self) -> mp::TaskHandle<#item, impl Future<Output = ()>> {
+                let (sender, receiver) = tokio::sync::mpsc::unbounded_channel::<#item>();
+
+                let handle = #mod_name::#mailbox.scope(mp::Mailbox::new(), async move {
+                    let handle = self.__setup(receiver);
+                    handle.await
+                });
+
+                mp::TaskHandle::new(sender, handle)
+            }
+        }
+
 
         mod #mod_name{
             use super::*;
