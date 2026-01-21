@@ -2,7 +2,7 @@
 
 This crate defines the procedural macros used by `notizia`.
 
-It exports the `#[Proc]` attribute, which is responsible for analyzing your struct and message enum to generate:
+It exports the `#[Task]` attribute macro, which is responsible for analyzing your struct and message enum to generate:
 
 1. The `Task` trait implementation.
 2. The `Mailbox` management logic.

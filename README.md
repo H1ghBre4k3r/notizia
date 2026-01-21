@@ -13,6 +13,6 @@ This project is organized as a Cargo workspace with two members:
 
 ## Getting Started
 
-To use Notizia, you define a struct to hold your state and an enum to represent the messages it can handle. The `#[notizia_gen::Proc]` attribute (re-exported by `notizia`) handles the implementation details, allowing you to focus on the `start` logic.
+To use Notizia, you define a struct to hold your state and an enum to represent the messages it can handle. The `#[Task]` attribute macro (re-exported from `notizia_gen`) implements the `Task` trait and handles the implementation details, allowing you to focus on the `start` logic.
 
 See the `notizia` crate documentation for specific usage examples.

@@ -4,20 +4,20 @@ This crate provides the core runtime and traits for the Notizia message passing 
 
 ## Core Concepts
 
-- **Task**: A trait (typically implemented via macro) that defines a message-handling process.
+- **Task**: A trait (implemented via the `#[Task]` attribute macro) that defines a message-handling process. The macro and trait share the same name, following the pattern of `#[derive(Debug)]` for the `Debug` trait.
 - **Runnable**: The trait where you define your process's logic.
 - **Mailbox**: Internal state management for the message receiver.
 - **Macros**: `spawn!`, `send!`, and `recv!` provide a shorthand DSL for interacting with processes.
 
 ## Usage
 
-Define your state struct and message enum, then implement `Runnable`. The `#[Proc]` attribute generates the necessary boilerplate to wire up the channels.
+Define your state struct and message enum, then implement `Runnable`. The `#[Task]` attribute macro generates the `Task` trait implementation and necessary boilerplate to wire up the channels.
 
 ```rust
-use notizia::{Task, Proc, Runnable, recv, send, spawn};
+use notizia::{Task, Runnable, recv, send, spawn};
 
-// The procedural macro generates the mailbox and trait implementations
-#[Proc(Message)]
+// The procedural macro generates the mailbox and Task trait implementation
+#[Task(Message)]
 struct MyProcess {}
 
 #[derive(Debug, Clone)]
