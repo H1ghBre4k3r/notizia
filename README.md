@@ -1,18 +1,78 @@
 # Notizia
 
-Notizia is a lightweight, type-safe message passing system built on top of Tokio. It provides an ergonomic abstraction for spawning and communicating with asynchronous tasks using an actor-like model.
+**Frictionless message passing for the Tokio runtime.**
 
-The goal is to reduce the boilerplate associated with setting up unbounded channels, managing task handles, and synchronizing state in async Rust applications.
+Async Rust is powerful, but managing channels, task handles, and state synchronization often leads to verbose boilerplate. Notizia cuts through the noise. It provides a thin, type-safe layer over Tokio's primitives, offering an actor-like model that feels native to Rust.
 
-## Workspace Structure
+The philosophy is simple: **Concurrency shouldn't hurt.**
 
-This project is organized as a Cargo workspace with two members:
+## Why Notizia?
 
-- **notizia**: The primary library containing the runtime primitives, traits, and interaction macros.
-- **notizia_gen**: A procedural macro crate that generates the necessary glue code for message handling.
+We built Notizia to solve the "setup tax" of spawning async tasks. Instead of manually wiring `mpsc` channels and managing mutex locks, you define your state and your messages. Notizia generates the rest.
 
-## Getting Started
+*   **Zero Boilerplate:** The `#[Task]` macro writes the plumbing for you. You focus on the logic.
+*   **Type-Safe Mailboxes:** Messages are strictly typed. No dynamic dispatch, no runtime surprises.
+*   **Tokio Native:** Built directly on standard `mpsc` channels and `JoinHandle`s. There is no heavy custom runtime, just ergonomic abstractions.
+*   **Unified Semantics:** We use a unified naming convention. The `#[Task]` macro implements the `Task` trait. It just works.
 
-To use Notizia, you define a struct to hold your state and an enum to represent the messages it can handle. The `#[Task]` attribute macro (re-exported from `notizia_gen`) implements the `Task` trait and handles the implementation details, allowing you to focus on the `start` logic.
+## Quick Start
 
-See the `notizia` crate documentation for specific usage examples.
+Add Notizia to your project and define your first task in seconds.
+
+```rust
+use notizia::{Task, Runnable, spawn, recv, send};
+
+// 1. Define your message protocol
+#[derive(Debug, Clone)]
+enum Signal {
+    Ping,
+    Pong,
+}
+
+// 2. Define your state and attach the Task capability
+#[Task(Signal)]
+struct Worker {
+    id: usize,
+}
+
+// 3. Implement the logic
+impl Runnable<Signal> for Worker {
+    async fn start(&self) {
+        async move {
+            loop {
+                // Type-safe message receiving
+                let msg = recv!(self);
+                println!("Worker {} received: {:?}", self.id, msg);
+            }
+        }
+        .await
+    }
+}
+
+#[tokio::main]
+async fn main() {
+    // 4. Spawn and enjoy
+    let worker = Worker { id: 1 };
+    let handle = spawn!(worker);
+
+    let _ = send!(handle, Signal::Ping);
+    
+    handle.join().await;
+}
+```
+
+## Workspace Overview
+
+This repository is organized as a Cargo workspace:
+
+*   **notizia**: The public-facing library. You only need to depend on this.
+*   **notizia_gen**: The procedural macro generator. It powers the `#[Task]` attribute but is an internal implementation detail.
+
+## Installation
+
+Add this to your `Cargo.toml`:
+
+```toml
+[dependencies]
+notizia = "0.1"
+```
