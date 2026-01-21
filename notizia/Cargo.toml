@@ -3,10 +3,11 @@ name = "notizia"
 version.workspace = true
 edition = "2024"
 authors.workspace = true
+description.workspace = true
 license.workspace = true
-readme.workspace = true
+readme = "README.md"
 repository.workspace = true
 
 [dependencies]
-notizia_gen = { path = "../notizia_gen/" }
-tokio = { version = "1.49.0", features = ["full"] }
+notizia_gen.workspace = true
+tokio.workspace = true

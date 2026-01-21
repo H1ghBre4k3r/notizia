@@ -3,8 +3,13 @@ members = ["notizia", "notizia_gen"]
 resolver = "2"
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Louis Meyer (H1ghBre4k3r) <h1ghbe4k3r@dev.bre4k3r.de>"]
+description = "Frictionless message passing for the Tokio runtime"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/H1ghBre4k3r/notizia"
+
+[workspace.dependencies]
+notizia_gen = { version = "0.2.0", path = "notizia_gen" }
+tokio = { version = "1.49.0", features = ["full"] }
