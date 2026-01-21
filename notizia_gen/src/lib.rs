@@ -54,8 +54,8 @@ pub fn Task(attrs: TokenStream, input: TokenStream) -> TokenStream {
                 notizia::TaskHandle::new(sender, handle)
             }
 
-            fn id(&self) -> notizia::tokio::sync::mpsc::UnboundedSender<#item> {
-                #mod_name::#task_state.get().sender
+            fn this(&self) -> notizia::TaskRef<#item> {
+                notizia::TaskRef::new(#mod_name::#task_state.get().sender)
             }
         }
 

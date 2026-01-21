@@ -1,5 +1,4 @@
-use notizia::{Runnable, Task, recv, send, spawn};
-use tokio::sync::mpsc::UnboundedSender;
+use notizia::{Runnable, Task, TaskRef, recv, send, spawn};
 
 #[Task(PingMsg)]
 struct PingProc;
@@ -13,7 +12,7 @@ impl Runnable<PingMsg> for PingProc {
         let pong_proc = spawn!(PongProc);
 
         for i in 0..10 {
-            send!(pong_proc, PongMsg(self.id())).expect("Sending should work");
+            send!(pong_proc, PongMsg(self.this())).expect("Sending should work");
 
             let msg = recv!(self);
             println!("PingProc received: {msg:?} #{i}");
@@ -26,7 +25,7 @@ impl Runnable<PingMsg> for PingProc {
 struct PongProc;
 
 #[derive(Debug, Clone)]
-struct PongMsg(UnboundedSender<PingMsg>);
+struct PongMsg(TaskRef<PingMsg>);
 
 impl Runnable<PongMsg> for PongProc {
     async fn start(&self) {

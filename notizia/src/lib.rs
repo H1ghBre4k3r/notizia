@@ -67,7 +67,7 @@ where
         async move { self.mailbox().recv().await }
     }
 
-    fn id(&self) -> UnboundedSender<T>;
+    fn this(&self) -> TaskRef<T>;
 }
 pub struct TaskHandle<T>
 where
@@ -95,6 +95,21 @@ where
 
     pub fn kill(self) {
         self.handle.abort();
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct TaskRef<T> {
+    sender: UnboundedSender<T>,
+}
+
+impl<T> TaskRef<T> {
+    pub fn new(sender: UnboundedSender<T>) -> Self {
+        TaskRef { sender }
+    }
+
+    pub fn send(&self, msg: T) -> Result<(), SendError<T>> {
+        self.sender.send(msg)
     }
 }
 
