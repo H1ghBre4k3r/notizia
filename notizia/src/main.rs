@@ -1,6 +1,6 @@
 use notizia::{Runnable, Task, recv, send, spawn};
 
-#[notizia::Proc(Bar)]
+#[Task(Bar)]
 struct MyProc {}
 
 #[derive(Debug, Clone)]

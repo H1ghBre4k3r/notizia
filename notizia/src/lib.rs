@@ -8,7 +8,7 @@ use tokio::{
     task::futures::TaskLocalFuture,
 };
 
-pub use notizia_gen::Proc;
+pub use notizia_gen::Task;
 
 pub use tokio;
 

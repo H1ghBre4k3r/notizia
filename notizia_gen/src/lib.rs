@@ -5,7 +5,7 @@ use proc_macro::TokenStream;
 
 #[allow(non_snake_case)]
 #[proc_macro_attribute]
-pub fn Proc(attrs: TokenStream, input: TokenStream) -> TokenStream {
+pub fn Task(attrs: TokenStream, input: TokenStream) -> TokenStream {
     let item = parse_macro_input!(attrs as syn::Path);
     let ast: syn::Item =
         syn::parse(input.clone()).expect("#[token] currently only works for items!");
