@@ -23,6 +23,7 @@ Add Notizia to your project and define your first task in seconds.
 use notizia::{Task, Runnable, spawn, recv, send};
 
 // 1. Define your message protocol
+// Clone is required for messages passed through channels
 #[derive(Debug, Clone)]
 enum Signal {
     Ping,
@@ -38,14 +39,11 @@ struct Worker {
 // 3. Implement the logic
 impl Runnable<Signal> for Worker {
     async fn start(&self) {
-        async move {
-            loop {
-                // Type-safe message receiving
-                let msg = recv!(self);
-                println!("Worker {} received: {:?}", self.id, msg);
-            }
+        loop {
+            // Type-safe message receiving
+            let msg = recv!(self);
+            println!("Worker {} received: {:?}", self.id, msg);
         }
-        .await
     }
 }
 

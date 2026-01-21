@@ -20,6 +20,7 @@ use notizia::{Task, Runnable, recv, send, spawn};
 #[Task(Message)]
 struct MyProcess {}
 
+// Clone is required for messages passed through channels
 #[derive(Debug, Clone)]
 enum Message {
     Ping,
@@ -29,14 +30,11 @@ enum Message {
 impl Runnable<Message> for MyProcess {
     async fn start(&self) {
         // This block runs in the spawned task
-        async move {
-            loop {
-                let msg = recv!(self);
-                println!("Received: {:?}", msg);
-                // Handle exit conditions or logic here
-            }
+        loop {
+            let msg = recv!(self);
+            println!("Received: {:?}", msg);
+            // Handle exit conditions or logic here
         }
-        .await
     }
 }
 
