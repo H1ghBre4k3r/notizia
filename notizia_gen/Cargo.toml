@@ -1,8 +1,10 @@
 [package]
 name = "notizia_gen"
-version = "0.1.0"
+version.workspace = true
 edition = "2024"
+authors.workspace = true
 license.workspace = true
+repository.workspace = true
 
 [lib]
 proc-macro = true

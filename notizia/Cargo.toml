@@ -1,8 +1,11 @@
 [package]
 name = "notizia"
-version = "0.1.0"
+version.workspace = true
 edition = "2024"
+authors.workspace = true
 license.workspace = true
+readme.workspace = true
+repository.workspace = true
 
 [dependencies]
 notizia_gen = { path = "../notizia_gen/" }
