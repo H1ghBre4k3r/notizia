@@ -16,9 +16,9 @@ pub fn Task(attrs: TokenStream, input: TokenStream) -> TokenStream {
         _ => todo!(),
     };
 
-    let mailbox = format_ident!("{name}Mailbox");
-
     let mod_name = format_ident!("__{name}_gen");
+
+    let task_state = format_ident!("{name}State");
 
     let generated = quote! {
         #ast
@@ -35,18 +35,27 @@ pub fn Task(attrs: TokenStream, input: TokenStream) -> TokenStream {
             }
 
             fn mailbox(&self) -> notizia::Mailbox<#item> {
-                #mod_name::#mailbox.get()
+                #mod_name::#task_state.get().mailbox
             }
 
-            fn run(self) -> notizia::TaskHandle<#item, impl Future<Output = ()>> {
-                let (sender, receiver) = tokio::sync::mpsc::unbounded_channel::<#item>();
+            fn run(self) -> notizia::TaskHandle<#item> {
+                let (sender, receiver) = notizia::tokio::sync::mpsc::unbounded_channel::<#item>();
 
-                let handle = #mod_name::#mailbox.scope(notizia::Mailbox::new(), async move {
+                let task = #mod_name::#task_state.scope(notizia::TaskState {
+                    mailbox: notizia::Mailbox::new(),
+                    sender: sender.clone(),
+                }, async move {
                     let handle = self.__setup(receiver);
                     handle.await
                 });
 
+                let handle = notizia::tokio::spawn(task);
+
                 notizia::TaskHandle::new(sender, handle)
+            }
+
+            fn id(&self) -> notizia::tokio::sync::mpsc::UnboundedSender<#item> {
+                #mod_name::#task_state.get().sender
             }
         }
 
@@ -55,7 +64,7 @@ pub fn Task(attrs: TokenStream, input: TokenStream) -> TokenStream {
             use super::*;
 
             tokio::task_local! {
-                pub static #mailbox: notizia::Mailbox<#item>;
+                pub static #task_state: notizia::TaskState<#item>;
             }
         }
     };

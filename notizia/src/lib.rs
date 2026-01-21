@@ -3,10 +3,8 @@ use std::sync::Arc;
 
 use tokio::sync::Mutex;
 use tokio::sync::mpsc::error::SendError;
-use tokio::{
-    sync::mpsc::{UnboundedReceiver, UnboundedSender},
-    task::futures::TaskLocalFuture,
-};
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+use tokio::task::JoinHandle;
 
 pub use notizia_gen::Task;
 
@@ -63,37 +61,47 @@ where
 
     fn mailbox(&self) -> Mailbox<T>;
 
-    fn run(self) -> TaskHandle<T, impl Future<Output = ()>>;
+    fn run(self) -> TaskHandle<T>;
 
     fn recv(&self) -> impl Future<Output = T> + Send {
         async move { self.mailbox().recv().await }
     }
+
+    fn id(&self) -> UnboundedSender<T>;
 }
-pub struct TaskHandle<T, F>
+pub struct TaskHandle<T>
 where
     T: 'static,
-    F: Future<Output = ()>,
 {
     sender: UnboundedSender<T>,
-    handle: TaskLocalFuture<Mailbox<T>, F>,
+    handle: JoinHandle<()>,
 }
 
-impl<T, F> TaskHandle<T, F>
+impl<T> TaskHandle<T>
 where
     T: 'static,
-    F: Future<Output = ()>,
 {
-    pub fn new(sender: UnboundedSender<T>, handle: TaskLocalFuture<Mailbox<T>, F>) -> Self {
+    pub fn new(sender: UnboundedSender<T>, handle: JoinHandle<()>) -> Self {
         TaskHandle { sender, handle }
     }
 
     pub async fn join(self) {
-        self.handle.await
+        let _ = self.handle.await;
     }
 
     pub fn send(&self, msg: T) -> Result<(), SendError<T>> {
         self.sender.send(msg)
     }
+
+    pub fn kill(self) {
+        self.handle.abort();
+    }
+}
+
+#[derive(Clone)]
+pub struct TaskState<T> {
+    pub mailbox: Mailbox<T>,
+    pub sender: UnboundedSender<T>,
 }
 
 /// Spawn a task which implements `notizia::Runnable`.
