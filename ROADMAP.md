@@ -28,8 +28,11 @@ The existing implementation provides:
 ## Version 0.3.0: Foundation
 
 **Target Timeline:** 12 weeks from start of development
+**Milestone:** [v0.3.0](https://github.com/H1ghBre4k3r/notizia/milestone/1)
 
 ### Phase 1: Error Handling and Lifecycle (Weeks 1-2)
+
+**Issues:** [Result-based send/recv error handling](https://github.com/H1ghBre4k3r/notizia/issues/3), [Graceful shutdown and lifecycle hooks](https://github.com/H1ghBre4k3r/notizia/issues/4)
 
 #### Result-Based Error Propagation
 
@@ -83,6 +86,8 @@ Tasks will have two shutdown methods:
 - Updated examples
 
 ### Phase 2: GenServer Pattern (Weeks 3-4)
+
+**Issues:** [Call/cast request-response API](https://github.com/H1ghBre4k3r/notizia/issues/5), [Named process registry and discovery macros](https://github.com/H1ghBre4k3r/notizia/issues/6)
 
 #### Call/Cast Message Semantics
 
@@ -142,6 +147,8 @@ The registry uses type erasure internally with `downcast` for type safety. Tasks
 
 ### Phase 3: Linking and Monitoring (Weeks 5-6)
 
+**Issues:** [Process linking with crash propagation](https://github.com/H1ghBre4k3r/notizia/issues/7), [Process monitoring API and callbacks](https://github.com/H1ghBre4k3r/notizia/issues/8)
+
 #### Process Linking
 
 Bidirectional crash propagation:
@@ -186,6 +193,8 @@ monitor!(worker, on_exit = |reason| {
 - Documentation on proper linking patterns
 
 ### Phase 4: Selective Receive (Week 7)
+
+**Issue:** [Selective receive mailbox and recv_match macro](https://github.com/H1ghBre4k3r/notizia/issues/9)
 
 #### Pattern-Based Message Consumption
 
@@ -235,6 +244,8 @@ This feature is opt-in via `#[Task(Msg, selective = true)]` due to buffering ove
 - Example demonstrating use case
 
 ### Phase 5: Supervision Trees (Weeks 8-10)
+
+**Issues:** [Supervision core: trait, strategies, restart tracking](https://github.com/H1ghBre4k3r/notizia/issues/10), [SupervisorTree builder and #[Supervisor] macro](https://github.com/H1ghBre4k3r/notizia/issues/11)
 
 #### Supervisor Trait
 
@@ -301,6 +312,8 @@ SupervisorTree::new()
 
 ### Phase 6: Observability (Week 11)
 
+**Issues:** [Task metrics and inspect macro](https://github.com/H1ghBre4k3r/notizia/issues/12), [Tracing integration and observability validation](https://github.com/H1ghBre4k3r/notizia/issues/13)
+
 #### Task Metrics
 
 ```rust
@@ -338,6 +351,8 @@ Uses the `tracing` crate for structured logging integration.
 - Performance impact analysis
 
 ### Phase 7: Documentation (Week 12)
+
+**Issues:** [Rustdoc coverage and API documentation](https://github.com/H1ghBre4k3r/notizia/issues/14), [Examples suite for v0.3](https://github.com/H1ghBre4k3r/notizia/issues/15), [Migration guide from v0.2 to v0.3](https://github.com/H1ghBre4k3r/notizia/issues/16), [Comparison documentation and v0.3 announcement](https://github.com/H1ghBre4k3r/notizia/issues/17)
 
 #### API Documentation
 
@@ -380,6 +395,8 @@ Include benchmark results and use case recommendations.
 - Blog post announcing v0.3
 
 ## Project Structure
+
+**Issue:** [Align module layout with v0.3 structure](https://github.com/H1ghBre4k3r/notizia/issues/19)
 
 Proposed module organization for v0.3:
 
@@ -427,6 +444,8 @@ Since the project is pre-1.0, we accept breaking changes for better long-term er
 The migration path is straightforward: add `?` operators and handle errors appropriately.
 
 ## Open Questions
+
+**Tracking issue:** [Resolve v0.3 open design questions](https://github.com/H1ghBre4k3r/notizia/issues/18)
 
 ### Type Erasure in Registry
 
