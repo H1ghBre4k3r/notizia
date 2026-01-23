@@ -1,0 +1,25 @@
+version: 2
+updates:
+  # Cargo dependencies for the workspace
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    # Group all dependency updates into a single pull request
+    groups:
+      all-dependencies:
+        patterns:
+          - "*"
+    # Automatically label dependabot PRs
+    labels:
+      - "dependencies"
+      - "rust"
+
+  # GitHub Actions dependencies
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    labels:
+      - "dependencies"
+      - "github-actions"
