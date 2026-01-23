@@ -57,7 +57,7 @@ jobs:
         run: cargo build --workspace --verbose --release
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: build-${{ matrix.os }}-${{ matrix.toolchain }}-${{ matrix.profile }}
           path: target/${{ matrix.profile }}
