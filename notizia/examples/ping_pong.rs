@@ -7,17 +7,18 @@ struct PingProc;
 struct PingMsg;
 
 impl Runnable<PingMsg> for PingProc {
-    async fn start(&self) {
+    async fn start(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         println!("Starting PingProc");
         let pong_proc = spawn!(PongProc);
 
         for i in 0..10 {
-            send!(pong_proc, PongMsg(self.this())).expect("Sending should work");
+            send!(pong_proc, PongMsg(self.this()));
 
             let msg = recv!(self);
             println!("PingProc received: {msg:?} #{i}");
         }
         pong_proc.kill();
+        Ok(())
     }
 }
 
@@ -28,13 +29,13 @@ struct PongProc;
 struct PongMsg(TaskRef<PingMsg>);
 
 impl Runnable<PongMsg> for PongProc {
-    async fn start(&self) {
+    async fn start(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         println!("Starting PongProc");
         loop {
             let msg = recv!(self);
             println!("PongProc received {msg:?}");
             let PongMsg(other) = msg;
-            send!(other, PingMsg).expect("Sending should work");
+            send!(other, PingMsg);
         }
     }
 }

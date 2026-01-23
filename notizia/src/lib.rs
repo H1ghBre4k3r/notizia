@@ -2,13 +2,15 @@ use std::future::Future;
 use std::sync::Arc;
 
 use tokio::sync::Mutex;
-use tokio::sync::mpsc::error::SendError;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::task::JoinHandle;
 
 pub use notizia_gen::Task;
 
 pub use tokio;
+
+pub mod core;
+pub use core::{RecvError, SendError};
 
 #[derive(Clone)]
 pub struct Mailbox<T> {
@@ -32,38 +34,39 @@ impl<T> Mailbox<T> {
         *self.receiver.lock().await = Some(receiver);
     }
 
-    pub async fn recv(&self) -> T {
+    pub async fn recv(&self) -> Result<T, RecvError> {
         // Take the receiver out
         let mut receiver = {
             let mut slot = self.receiver.lock().await;
-            slot.take().expect("receiver not set")
+            slot.take().ok_or(RecvError::Closed)?
         };
 
         // Await without holding the Mutex lock
-        let value = receiver.recv().await.unwrap();
+        let value: Option<T> = receiver.recv().await;
+        let value = value.ok_or(RecvError::Closed)?;
 
         // Put it back
         *self.receiver.lock().await = Some(receiver);
 
-        value
+        Ok(value)
     }
 }
 
 pub trait Runnable<T>: Send + Sync {
-    fn start(&self) -> impl Future<Output = ()> + Send;
+    fn start(&self) -> impl Future<Output = Result<(), Box<dyn std::error::Error + Send + Sync>>> + Send;
 }
 
 pub trait Task<T>: Runnable<T>
 where
     T: Send,
 {
-    fn __setup(&self, receiver: UnboundedReceiver<T>) -> impl Future<Output = ()> + Send;
+    fn __setup(&self, receiver: UnboundedReceiver<T>) -> impl Future<Output = Result<(), Box<dyn std::error::Error + Send + Sync>>> + Send;
 
     fn mailbox(&self) -> Mailbox<T>;
 
     fn run(self) -> TaskHandle<T>;
 
-    fn recv(&self) -> impl Future<Output = T> + Send {
+    fn recv(&self) -> impl Future<Output = Result<T, RecvError>> + Send {
         async move { self.mailbox().recv().await }
     }
 
@@ -74,14 +77,14 @@ where
     T: 'static,
 {
     sender: UnboundedSender<T>,
-    handle: JoinHandle<()>,
+    handle: JoinHandle<Result<(), Box<dyn std::error::Error + Send + Sync>>>,
 }
 
 impl<T> TaskHandle<T>
 where
     T: 'static,
 {
-    pub fn new(sender: UnboundedSender<T>, handle: JoinHandle<()>) -> Self {
+    pub fn new(sender: UnboundedSender<T>, handle: JoinHandle<Result<(), Box<dyn std::error::Error + Send + Sync>>>) -> Self {
         TaskHandle { sender, handle }
     }
 
@@ -90,7 +93,7 @@ where
     }
 
     pub fn send(&self, msg: T) -> Result<(), SendError<T>> {
-        self.sender.send(msg)
+        self.sender.send(msg).map_err(|e| SendError::Disconnected(e.0))
     }
 
     pub fn kill(self) {
@@ -109,7 +112,7 @@ impl<T> TaskRef<T> {
     }
 
     pub fn send(&self, msg: T) -> Result<(), SendError<T>> {
-        self.sender.send(msg)
+        self.sender.send(msg).map_err(|e| SendError::Disconnected(e.0))
     }
 }
 
@@ -131,13 +134,13 @@ macro_rules! spawn {
 #[macro_export]
 macro_rules! send {
     ($task:ident, $msg:expr) => {
-        $task.send($msg)
+        $task.send($msg)?
     };
 }
 
 #[macro_export]
 macro_rules! recv {
     ($ident:ident) => {
-        $ident.recv().await
+        $ident.recv().await?
     };
 }
