@@ -12,9 +12,9 @@ impl Runnable<PingMsg> for PingProc {
         let pong_proc = spawn!(PongProc);
 
         for i in 0..10 {
-            send!(pong_proc, PongMsg(self.this())).expect("Sending should work");
+            send!(pong_proc, PongMsg(self.this())).expect("Send failed");
 
-            let msg = recv!(self);
+            let msg = recv!(self).expect("Recv failed");
             println!("PingProc received: {msg:?} #{i}");
         }
         pong_proc.kill();
@@ -31,10 +31,10 @@ impl Runnable<PongMsg> for PongProc {
     async fn start(&self) {
         println!("Starting PongProc");
         loop {
-            let msg = recv!(self);
+            let msg = recv!(self).expect("Recv failed");
             println!("PongProc received {msg:?}");
             let PongMsg(other) = msg;
-            send!(other, PingMsg).expect("Sending should work");
+            send!(other, PingMsg).expect("Send failed");
         }
     }
 }
@@ -45,5 +45,5 @@ async fn main() {
 
     let handle = spawn!(task);
 
-    handle.join().await
+    handle.join().await;
 }

@@ -2,13 +2,16 @@ use std::future::Future;
 use std::sync::Arc;
 
 use tokio::sync::Mutex;
-use tokio::sync::mpsc::error::SendError;
+use tokio::sync::mpsc::error::SendError as TokioSendError;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::task::JoinHandle;
 
 pub use notizia_gen::Task;
-
 pub use tokio;
+
+mod core;
+
+pub use core::{RecvError, RecvResult, SendError, SendResult};
 
 #[derive(Clone)]
 pub struct Mailbox<T> {
@@ -32,20 +35,20 @@ impl<T> Mailbox<T> {
         *self.receiver.lock().await = Some(receiver);
     }
 
-    pub async fn recv(&self) -> T {
+    pub async fn recv(&self) -> RecvResult<T> {
         // Take the receiver out
         let mut receiver = {
             let mut slot = self.receiver.lock().await;
-            slot.take().expect("receiver not set")
+            slot.take().ok_or(RecvError::Poisoned)?
         };
 
         // Await without holding the Mutex lock
-        let value = receiver.recv().await.unwrap();
+        let value = receiver.recv().await.ok_or(RecvError::Closed)?;
 
         // Put it back
         *self.receiver.lock().await = Some(receiver);
 
-        value
+        Ok(value)
     }
 }
 
@@ -63,7 +66,7 @@ where
 
     fn run(self) -> TaskHandle<T>;
 
-    fn recv(&self) -> impl Future<Output = T> + Send {
+    fn recv(&self) -> impl Future<Output = RecvResult<T>> + Send {
         async move { self.mailbox().recv().await }
     }
 
@@ -90,7 +93,9 @@ where
     }
 
     pub fn send(&self, msg: T) -> Result<(), SendError<T>> {
-        self.sender.send(msg)
+        self.sender
+            .send(msg)
+            .map_err(|TokioSendError(msg)| SendError::Disconnected(msg))
     }
 
     pub fn kill(self) {
@@ -109,7 +114,9 @@ impl<T> TaskRef<T> {
     }
 
     pub fn send(&self, msg: T) -> Result<(), SendError<T>> {
-        self.sender.send(msg)
+        self.sender
+            .send(msg)
+            .map_err(|TokioSendError(msg)| SendError::Disconnected(msg))
     }
 }
 
