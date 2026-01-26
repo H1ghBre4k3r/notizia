@@ -1,0 +1,24 @@
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `tokio`
+ --> tests/compile_fail/non_clone_message.rs:9:1
+  |
+9 | #[Task(NonCloneMessage)]
+  | ^^^^^^^^^^^^^^^^^^^^^^^^ use of unresolved module or unlinked crate `tokio`
+  |
+  = note: this error originates in the attribute macro `Task` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `notizia`
+ --> tests/compile_fail/non_clone_message.rs:9:1
+  |
+9 | #[Task(NonCloneMessage)]
+  | ^^^^^^^^^^^^^^^^^^^^^^^^ use of unresolved module or unlinked crate `notizia`
+  |
+  = help: if you wanted to use a crate named `notizia`, use `cargo add notizia` to add it to your `Cargo.toml`
+  = note: this error originates in the attribute macro `Task` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find value `MyTaskState` in module `__MyTask_gen`
+ --> tests/compile_fail/non_clone_message.rs:9:1
+  |
+9 | #[Task(NonCloneMessage)]
+  | ^^^^^^^^^^^^^^^^^^^^^^^^ not found in `__MyTask_gen`
+  |
+  = note: this error originates in the attribute macro `Task` (in Nightly builds, run with -Z macro-backtrace for more info)
