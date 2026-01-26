@@ -1,5 +1,8 @@
 # Notizia
 
+[![codecov](https://codecov.io/gh/H1ghBre4k3r/notizia/branch/main/graph/badge.svg)](https://codecov.io/gh/H1ghBre4k3r/notizia)
+[![CI](https://github.com/H1ghBre4k3r/notizia/workflows/CI/badge.svg)](https://github.com/H1ghBre4k3r/notizia/actions)
+
 **Frictionless message passing for the Tokio runtime.**
 
 Async Rust is powerful, but managing channels, task handles, and state synchronization often leads to verbose boilerplate. Notizia cuts through the noise. It provides a thin, type-safe layer over Tokio's primitives, offering an actor-like model that feels native to Rust.
@@ -74,3 +77,39 @@ Add this to your `Cargo.toml`:
 [dependencies]
 notizia = "0.1"
 ```
+
+## Development
+
+### Running Tests
+
+```bash
+# Run all tests
+cargo test --workspace
+
+# Run tests with coverage
+make test-coverage
+
+# Generate HTML coverage report
+make coverage
+```
+
+### Code Coverage
+
+This project uses `cargo-llvm-cov` for code coverage tracking with a target of 90% coverage. Coverage reports are automatically generated in CI and uploaded to [Codecov](https://codecov.io/gh/H1ghBre4k3r/notizia).
+
+**Local Coverage Reports:**
+
+First, install the coverage tool (one-time setup):
+```bash
+make install-tools
+# or manually: cargo install cargo-llvm-cov
+```
+
+Then generate coverage reports:
+```bash
+make coverage          # Generate HTML report and open in browser
+make coverage-check    # Check if coverage meets 90% threshold
+make coverage-lcov     # Generate LCOV format for tooling
+```
+
+Coverage reports are stored in `target/llvm-cov/html/` and can also be downloaded from CI artifacts on each pull request.
