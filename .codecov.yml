@@ -1,0 +1,42 @@
+# Codecov Configuration for Notizia
+# https://docs.codecov.com/docs/codecov-yaml
+
+coverage:
+  status:
+    project:
+      default:
+        target: 90%
+        threshold: 1%
+        if_ci_failed: error
+
+    patch:
+      default:
+        target: 80%
+        threshold: 5%
+        if_ci_failed: error
+
+  range: 70..100
+
+comment:
+  layout: "header, diff, changes, uncovered, files, footer"
+  behavior: default
+  require_changes: false
+  require_base: false
+  require_head: true
+
+ignore:
+  - "target/"
+  - "**/tests.rs"
+  - "tests/"
+  - "benches/"
+  - "**/tests/**/*.expanded.rs"
+  - "notizia_gen/tests/expand/*.expanded.rs"
+
+flags:
+  notizia:
+    paths:
+      - notizia/src/
+    
+  notizia_gen:
+    paths:
+      - notizia_gen/src/
