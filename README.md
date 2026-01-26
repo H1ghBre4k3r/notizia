@@ -44,7 +44,7 @@ impl Runnable<Signal> for Worker {
     async fn start(&self) {
         loop {
             // Type-safe message receiving
-            let msg = recv!(self);
+            let msg = recv!(self).unwrap();
             println!("Worker {} received: {:?}", self.id, msg);
         }
     }
@@ -56,11 +56,102 @@ async fn main() {
     let worker = Worker { id: 1 };
     let handle = spawn!(worker);
 
-    let _ = send!(handle, Signal::Ping);
+    send!(handle, Signal::Ping).expect("failed to send");
     
     handle.join().await;
 }
 ```
+
+## Error Handling
+
+Notizia provides explicit, type-safe error handling for all messaging operations. Instead of panicking on channel failures, operations return `Result` types that you can handle gracefully.
+
+**Return Types:**
+- `recv!()` returns `Result<T, RecvError>`
+- `send!()` returns `Result<(), SendError<T>>`
+
+**RecvError Variants:**
+- `Closed` - The channel has been closed
+- `Poisoned` - The channel is in an invalid state
+- `Timeout` - A receive operation timed out
+
+### Pattern 1: Simple Error Handling with `.unwrap()` / `.expect()`
+
+For prototypes or when you want to panic on errors:
+
+```rust
+use notizia::{Task, Runnable, spawn, recv, send};
+
+#[derive(Debug, Clone)]
+enum Message { Ping }
+
+#[Task(Message)]
+struct Worker;
+
+impl Runnable<Message> for Worker {
+    async fn start(&self) {
+        loop {
+            let msg = recv!(self).unwrap();  // Panics if channel closed
+            println!("Received: {:?}", msg);
+        }
+    }
+}
+
+#[tokio::main]
+async fn main() {
+    let worker = Worker;
+    let handle = spawn!(worker);
+    
+    send!(handle, Message::Ping).expect("failed to send");
+}
+```
+
+### Pattern 2: Error Propagation with `?`
+
+For composable error handling in async functions:
+
+```rust
+use notizia::{RecvError, SendError};
+
+async fn process_messages(worker: &Worker) -> Result<(), RecvError> {
+    loop {
+        let msg = recv!(worker)?;  // Propagates errors to caller
+        println!("Processing: {:?}", msg);
+    }
+}
+```
+
+### Pattern 3: Explicit Error Handling with Pattern Matching
+
+For graceful shutdown and custom error logic:
+
+```rust
+impl Runnable<Message> for Worker {
+    async fn start(&self) {
+        loop {
+            match recv!(self) {
+                Ok(msg) => {
+                    println!("Received: {:?}", msg);
+                }
+                Err(RecvError::Closed) => {
+                    println!("Channel closed, shutting down gracefully");
+                    break;
+                }
+                Err(RecvError::Timeout) => {
+                    println!("Receive timeout, retrying...");
+                    continue;
+                }
+                Err(e) => {
+                    eprintln!("Unexpected error: {}", e);
+                    break;
+                }
+            }
+        }
+    }
+}
+```
+
+This explicit error handling enables production-ready reliability and graceful shutdown behavior.
 
 ## Workspace Overview
 
