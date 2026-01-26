@@ -1,0 +1,7 @@
+error: unexpected end of input, expected identifier
+ --> tests/compile_fail/invalid_task_syntax.rs:7:1
+  |
+7 | #[Task]
+  | ^^^^^^^
+  |
+  = note: this error originates in the attribute macro `Task` (in Nightly builds, run with -Z macro-backtrace for more info)
