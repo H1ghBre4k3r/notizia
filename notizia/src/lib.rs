@@ -233,8 +233,8 @@
 //!
 //! ### Synchronous: `call!`
 //!
-//! Use [`call!`](crate::call!) for request-response interactions that block until a reply 
-//! is received. The macro automatically creates a oneshot channel, sends the request, and 
+//! Use [`call!`](crate::call!) for request-response interactions that block until a reply
+//! is received. The macro automatically creates a oneshot channel, sends the request, and
 //! waits for the response with timeout protection.
 //!
 //! ```rust,no_run
