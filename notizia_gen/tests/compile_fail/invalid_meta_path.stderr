@@ -1,0 +1,6 @@
+error: The #[task] attribute requires parameters.
+       Use: #[task(message = YourMessageType)]
+ --> tests/compile_fail/invalid_meta_path.rs:8:3
+  |
+8 | #[task]
+  |   ^^^^

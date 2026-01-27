@@ -1,0 +1,6 @@
+error: Expected #[task(message = Type)].
+       The task attribute must be in the form: #[task(message = YourMessageType)]
+ --> tests/compile_fail/invalid_format.rs:8:3
+  |
+8 | #[task(message)]
+  |   ^^^^^^^^^^^^^

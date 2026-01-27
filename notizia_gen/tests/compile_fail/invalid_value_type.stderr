@@ -1,0 +1,6 @@
+error: Expected a type for the message parameter.
+       Example: #[task(message = MyMessage)]
+ --> tests/compile_fail/invalid_value_type.rs:5:18
+  |
+5 | #[task(message = "StringLiteral")]
+  |                  ^^^^^^^^^^^^^^^
