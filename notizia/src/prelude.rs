@@ -14,7 +14,7 @@
 //! - Derive macro: [`Task`] (for `#[derive(Task)]`)
 
 pub use crate::core::Mailbox;
-pub use crate::core::errors::{RecvError, RecvResult, SendResult};
+pub use crate::core::errors::{CallError, CallResult, RecvError, RecvResult, SendResult};
 pub use crate::core::lifecycle::{ShutdownError, ShutdownResult, TerminateReason};
 pub use crate::task::{Runnable, Task, TaskHandle, TaskRef};
 

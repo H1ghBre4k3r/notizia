@@ -80,6 +80,96 @@ macro_rules! send {
         $task.send($msg)
     };
 }
+/// Call a task and wait for synchronous response with timeout.
+///
+/// This macro performs a synchronous request-response interaction with a task,
+/// blocking until a reply is received or the timeout expires. It automatically
+/// creates a oneshot channel for the reply.
+///
+/// # Timeout
+///
+/// The timeout parameter is optional and defaults to 5000ms (5 seconds).
+/// Specify a custom timeout with `timeout = <millis>`.
+///
+/// # Errors
+///
+/// Returns [`CallError::Timeout`] if no response within deadline.
+/// Returns [`CallError::ChannelClosed`] if task drops reply channel.
+/// Returns [`CallError::SendError`] if task mailbox is closed.
+///
+/// # Example
+///
+/// ```no_run
+/// # use notizia::prelude::*;
+/// # use tokio::sync::oneshot;
+/// # #[derive(Clone)]
+/// enum Msg {
+///     GetStatus { reply_to: oneshot::Sender<u32> },
+/// }
+/// # #[derive(Task)]
+/// # #[task(message = Msg)]
+/// # struct Worker;
+/// # impl Runnable<Msg> for Worker { async fn start(&self) {} }
+/// # #[tokio::main]
+/// # async fn main() -> Result<(), CallError> {
+/// # let worker = Worker;
+/// # let handle = spawn!(worker);
+///
+/// // Default 5 second timeout
+/// let status = call!(handle, |tx| Msg::GetStatus { reply_to: tx }).await?;
+///
+/// // Custom timeout (1 second)
+/// let status = call!(handle, |tx| Msg::GetStatus { reply_to: tx }, timeout = 1000).await?;
+/// # Ok(())
+/// # }
+#[macro_export]
+macro_rules! call {
+    ($task:expr, $msg_constructor:expr) => {
+        call!($task, $msg_constructor, timeout = 5000)
+    };
+    ($task:expr, $msg_constructor:expr, timeout = $timeout:expr) => {{
+        async {
+            let (tx, rx) = $crate::tokio::sync::oneshot::channel();
+            let msg = $msg_constructor(tx);
+            $task
+                .send(msg)
+                .map_err(|_| $crate::core::errors::CallError::SendError)?;
+
+            $crate::tokio::time::timeout(std::time::Duration::from_millis($timeout), rx)
+                .await
+                .map_err(|_| $crate::core::errors::CallError::Timeout)?
+                .map_err(|_| $crate::core::errors::CallError::ChannelClosed)
+        }
+    }};
+}
+
+/// Cast a message to a task (fire-and-forget, asynchronous).
+///
+/// This is an alias for [`send!`] that matches GenServer/Erlang naming conventions.
+/// Cast operations are asynchronous and do not wait for a response.
+///
+/// # Example
+///
+/// ```no_run
+/// # use notizia::prelude::*;
+/// # #[derive(Clone)]
+/// # enum Signal { Increment }
+/// # #[derive(Task)]
+/// # #[task(message = Signal)]
+/// # struct Worker;
+/// # impl Runnable<Signal> for Worker { async fn start(&self) {} }
+/// # #[tokio::main]
+/// # async fn main() {
+/// # let worker = Worker;
+/// let handle = spawn!(worker);
+/// cast!(handle, Signal::Increment).expect("cast failed");
+/// # }
+#[macro_export]
+macro_rules! cast {
+    ($task:expr, $msg:expr) => {
+        $task.send($msg)
+    };
+}
 
 /// Receive a message from a task's mailbox.
 ///
