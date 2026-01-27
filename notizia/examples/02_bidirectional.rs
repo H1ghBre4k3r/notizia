@@ -134,8 +134,8 @@ async fn main() {
     server_handle.send(ServerMsg::Stop).unwrap();
     client_handle.send(ClientMsg::Stop).unwrap();
 
-    server_handle.join().await;
-    client_handle.join().await;
+    let _ = server_handle.join().await;
+    let _ = client_handle.join().await;
 
     println!("\nStatistics:");
     println!(

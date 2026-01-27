@@ -100,7 +100,7 @@ impl Runnable<SupervisorMsg> for Supervisor {
 
                     // Wait for all workers to finish
                     for (id, worker) in workers.into_iter().enumerate() {
-                        worker.join().await;
+                        let _ = worker.join().await;
                         println!("Supervisor: Worker {} joined", id);
                     }
 
@@ -134,7 +134,7 @@ async fn main() {
 
     // Shutdown
     handle.send(SupervisorMsg::Stop).unwrap();
-    handle.join().await;
+    let _ = handle.join().await;
 
     println!("\nAll done!");
 }

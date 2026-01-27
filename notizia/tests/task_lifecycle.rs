@@ -101,7 +101,7 @@ async fn task_can_be_spawned_and_started() {
     assert!(started.load(Ordering::SeqCst), "Task should have started");
 
     handle.send(LifecycleMsg::Stop).unwrap();
-    handle.join().await;
+    let _ = handle.join().await;
 }
 
 #[tokio::test]
@@ -115,7 +115,7 @@ async fn task_can_be_joined() {
     handle.send(LifecycleMsg::Stop).unwrap();
 
     // Join should wait for task to complete
-    handle.join().await;
+    let _ = handle.join().await;
 
     assert!(started.load(Ordering::SeqCst));
 }
@@ -179,9 +179,9 @@ async fn multiple_tasks_can_run_concurrently() {
     handle2.send(LifecycleMsg::Stop).unwrap();
     handle3.send(LifecycleMsg::Stop).unwrap();
 
-    handle1.join().await;
-    handle2.join().await;
-    handle3.join().await;
+    let _ = handle1.join().await;
+    let _ = handle2.join().await;
+    let _ = handle3.join().await;
 }
 
 #[tokio::test]
@@ -199,7 +199,7 @@ async fn task_with_state_maintains_state() {
     handle.send(CountMsg::Increment).unwrap();
     handle.send(CountMsg::GetAndStop).unwrap();
 
-    handle.join().await;
+    let _ = handle.join().await;
 
     assert_eq!(result.load(Ordering::SeqCst), 13);
 }

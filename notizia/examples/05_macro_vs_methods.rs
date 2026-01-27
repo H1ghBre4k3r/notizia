@@ -105,8 +105,8 @@ async fn main() {
     handle1.send(Message::Stop).unwrap();
     handle2.send(Message::Stop).unwrap();
 
-    handle1.join().await;
-    handle2.join().await;
+    let _ = handle1.join().await;
+    let _ = handle2.join().await;
 
     println!("\nSummary:");
     println!("  - spawn!(task) ≡ task.spawn() ≡ task.run()");

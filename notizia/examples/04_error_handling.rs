@@ -82,7 +82,7 @@ async fn main() {
     handle.send(Message::Process(2)).unwrap();
     handle.send(Message::Shutdown).unwrap();
 
-    handle.join().await;
+    let _ = handle.join().await;
 
     if error_flag.load(Ordering::SeqCst) {
         println!("Task encountered an error but recovered\n");
@@ -95,7 +95,7 @@ async fn main() {
     let task_ref = quick_handle.this();
 
     // Wait for task to finish
-    quick_handle.join().await;
+    let _ = quick_handle.join().await;
 
     // Try to send to terminated task
     match task_ref.send(Message::Process(42)) {
