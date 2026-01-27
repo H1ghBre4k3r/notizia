@@ -49,13 +49,55 @@ fn impl_task_derive(input: &DeriveInput) -> Result<quote::__private::TokenStream
     // Generate the Task trait implementation
     let generated = quote! {
         impl notizia::Task<#message_type> for #name {
-            fn __setup(&self, receiver: notizia::tokio::sync::mpsc::UnboundedReceiver<#message_type>) -> impl std::future::Future<Output = ()> + Send {
+            fn __setup(
+                &self,
+                receiver: notizia::tokio::sync::mpsc::UnboundedReceiver<#message_type>,
+            ) -> impl std::future::Future<Output = notizia::TerminateReason> + Send {
                 async move {
+                    // Set up mailbox
                     let mb = self.mailbox();
-
                     mb.set_receiver(receiver).await;
 
-                    self.start().await
+                    // Execute start() and catch panics
+                    let start_result = notizia::futures::FutureExt::catch_unwind(
+                        std::panic::AssertUnwindSafe(self.start())
+                    ).await;
+
+                    // Determine termination reason
+                    let reason = match start_result {
+                        Ok(()) => notizia::TerminateReason::Normal,
+                        Err(panic_payload) => {
+                            // Extract panic message
+                            let msg = if let Some(s) = panic_payload.downcast_ref::<&str>() {
+                                s.to_string()
+                            } else if let Some(s) = panic_payload.downcast_ref::<String>() {
+                                s.clone()
+                            } else {
+                                "unknown panic".to_string()
+                            };
+                            notizia::TerminateReason::Panic(msg)
+                        }
+                    };
+
+                    // Call terminate hook, also catch panics
+                    let terminate_result  = notizia::futures::FutureExt::catch_unwind(
+                        std::panic::AssertUnwindSafe(self.terminate(reason.clone()))
+                    ).await;
+
+                    // Log if terminate() panicked
+                    if let Err(terminate_panic) = terminate_result {
+                        let msg = if let Some(s) = terminate_panic.downcast_ref::<&str>() {
+                            s.to_string()
+                        } else if let Some(s) = terminate_panic.downcast_ref::<String>() {
+                            s.clone()
+                        } else {
+                            "unknown panic".to_string()
+                        };
+                        eprintln!("Warning: terminate() hook panicked: {}", msg);
+                    }
+
+                    // Return the original termination reason
+                    reason
                 }
             }
 

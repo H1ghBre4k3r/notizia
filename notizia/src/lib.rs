@@ -249,6 +249,9 @@ pub use crate::core::errors::{RecvError, RecvResult, SendResult};
 // Re-export task types at crate root
 pub use crate::task::{Runnable, Task, TaskHandle, TaskRef};
 
+// Re-export lifecycle types at crate root
+pub use crate::core::lifecycle::{ShutdownError, ShutdownResult, TerminateReason};
+
 // Note: Macros (spawn!, send!, recv!) are already at crate root via #[macro_export]
 // They don't need to be re-exported here
 
@@ -261,6 +264,9 @@ pub use notizia_gen::Task;
 // Re-export Tokio for macro usage (hidden from docs)
 #[doc(hidden)]
 pub use tokio;
+
+#[doc(hidden)]
+pub use futures;
 
 // Internal types (hidden from docs)
 #[doc(hidden)]

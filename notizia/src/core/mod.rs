@@ -6,6 +6,7 @@
 //! - [`state`] - Internal task-local state (hidden from docs)
 
 pub mod errors;
+pub mod lifecycle;
 pub mod mailbox;
 pub(crate) mod state;
 
