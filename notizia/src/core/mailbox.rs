@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::sync::Mutex;
+use tokio::sync::mpsc::UnboundedReceiver;
 
 use super::errors::{RecvError, RecvResult};
 

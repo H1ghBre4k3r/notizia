@@ -4,8 +4,8 @@ use std::future::Future;
 
 use tokio::sync::mpsc::UnboundedReceiver;
 
-use crate::core::errors::RecvResult;
 use crate::core::Mailbox;
+use crate::core::errors::RecvResult;
 
 use super::{TaskHandle, TaskRef};
 

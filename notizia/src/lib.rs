@@ -243,8 +243,8 @@ pub mod prelude;
 pub mod task;
 
 // Re-export core types at crate root
-pub use crate::core::errors::{RecvError, RecvResult, SendResult};
 pub use crate::core::Mailbox;
+pub use crate::core::errors::{RecvError, RecvResult, SendResult};
 
 // Re-export task types at crate root
 pub use crate::task::{Runnable, Task, TaskHandle, TaskRef};
