@@ -16,6 +16,7 @@ enum WorkerMsg {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 enum SupervisorMsg {
     DistributeWork(u32),
     WorkerFinished { id: usize, count: u32 },
