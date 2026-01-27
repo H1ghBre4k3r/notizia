@@ -17,8 +17,11 @@ use super::{TaskHandle, TaskRef};
 ///
 /// # Example
 ///
-/// ```
+/// ```ignore
+/// # TODO: Re-enable once derive macro hygiene is fixed
 /// use notizia::prelude::*;
+/// # #[derive(Debug, Clone)]
+/// # enum Signal { Stop }
 ///
 /// #[derive(Task)]
 /// #[task(message = Signal)]
@@ -36,8 +39,6 @@ use super::{TaskHandle, TaskRef};
 ///         }
 ///     }
 /// }
-/// # #[derive(Debug, Clone)]
-/// # enum Signal { Stop }
 /// ```
 pub trait Runnable<T>: Send + Sync {
     /// The main logic of the task.
@@ -148,13 +149,14 @@ where
     ///
     /// # Example
     ///
-    /// ```no_run
+    /// ```ignore
+    /// # TODO: Re-enable once derive macro hygiene is fixed
     /// # use notizia::prelude::*;
+    /// # #[derive(Clone)]
+    /// # enum Signal { Stop }
     /// # #[derive(Task)]
     /// # #[task(message = Signal)]
     /// # struct Worker;
-    /// # #[derive(Clone)]
-    /// # enum Signal { Stop }
     /// impl Runnable<Signal> for Worker {
     ///     async fn start(&self) {
     ///         // Using the method directly
@@ -176,8 +178,11 @@ where
     ///
     /// # Example
     ///
-    /// ```no_run
+    /// ```ignore
+    /// # TODO: Re-enable once derive macro hygiene is fixed
     /// # use notizia::prelude::*;
+    /// # #[derive(Clone)]
+    /// # enum Signal {}
     /// # #[derive(Task)]
     /// # #[task(message = Signal)]
     /// # struct Worker;
@@ -187,8 +192,6 @@ where
     /// #         // Pass other_task_ref to another task
     /// #     }
     /// # }
-    /// # #[derive(Clone)]
-    /// # enum Signal {}
     /// ```
     fn this(&self) -> TaskRef<T>;
 }

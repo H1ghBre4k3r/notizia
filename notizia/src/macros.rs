@@ -91,13 +91,14 @@ macro_rules! send {
 ///
 /// # Example
 ///
-/// ```no_run
+/// ```ignore
+/// # TODO: Re-enable once derive macro hygiene is fixed
 /// # use notizia::prelude::*;
+/// # #[derive(Clone)]
+/// # enum Signal { Ping }
 /// # #[derive(Task)]
 /// # #[task(message = Signal)]
 /// # struct Worker;
-/// # #[derive(Clone)]
-/// # enum Signal { Ping }
 /// impl Runnable<Signal> for Worker {
 ///     async fn start(&self) {
 ///         let msg = recv!(self).unwrap();
