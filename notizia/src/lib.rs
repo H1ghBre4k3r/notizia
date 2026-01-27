@@ -1,146 +1,263 @@
+//! # Notizia - Frictionless Message Passing
+//!
+//! **Async Rust actor-like message passing for the Tokio runtime.**
+//!
+//! Async Rust is powerful, but managing channels, task handles, and state synchronization
+//! often leads to verbose boilerplate. Notizia cuts through the noise. It provides a thin,
+//! type-safe layer over Tokio's primitives, offering an actor-like model that feels native
+//! to Rust.
+//!
+//! The philosophy is simple: **Concurrency shouldn't hurt.**
+//!
+//! ## Why Notizia?
+//!
+//! We built Notizia to solve the "setup tax" of spawning async tasks. Instead of manually
+//! wiring `mpsc` channels and managing mutex locks, you define your state and your messages.
+//! Notizia generates the rest.
+//!
+//! - **Zero Boilerplate:** The `#[derive(Task)]` macro writes the plumbing for you.
+//! - **Type-Safe Mailboxes:** Messages are strictly typed. No dynamic dispatch.
+//! - **Tokio Native:** Built directly on standard `mpsc` channels and `JoinHandle`s.
+//! - **Unified Semantics:** Consistent naming and ergonomic APIs.
+//!
+//! ## Quick Start
+//!
+//! ```rust
+//! use notizia::prelude::*;
+//!
+//! // 1. Define your message protocol
+//! #[derive(Debug, Clone)]
+//! enum Signal {
+//!     Ping,
+//!     Pong,
+//! }
+//!
+//! // 2. Define your state and derive Task
+//! #[derive(Task)]
+//! #[task(message = Signal)]
+//! struct Worker {
+//!     id: usize,
+//! }
+//!
+//! // 3. Implement the logic
+//! impl Runnable<Signal> for Worker {
+//!     async fn start(&self) {
+//!         loop {
+//!             match recv!(self) {
+//!                 Ok(msg) => println!("Worker {} received: {:?}", self.id, msg),
+//!                 Err(_) => break,
+//!             }
+//!         }
+//!     }
+//! }
+//!
+//! #[tokio::main]
+//! async fn main() {
+//!     // 4. Spawn and enjoy
+//!     let worker = Worker { id: 1 };
+//!     let handle = spawn!(worker);
+//!
+//!     send!(handle, Signal::Ping).expect("failed to send");
+//!     
+//!     handle.join().await;
+//! }
+//! ```
+//!
+//! ## Core Concepts
+//!
+//! ### Tasks
+//!
+//! A **task** is an independent unit of work that processes messages. Tasks are defined
+//! by deriving the [`Task`] trait and implementing [`Runnable`]:
+//!
+//! ```rust
+//! # use notizia::prelude::*;
+//! #[derive(Task)]
+//! #[task(message = MyMessage)]
+//! struct MyTask {
+//!     // Your state here
+//! }
+//!
+//! impl Runnable<MyMessage> for MyTask {
+//!     async fn start(&self) {
+//!         // Your task logic here
+//!     }
+//! }
+//! # #[derive(Clone)] enum MyMessage {}
+//! ```
+//!
+//! ### Messages
+//!
+//! Messages are strongly-typed values sent between tasks. They must implement `Clone`
+//! since messages are passed through unbounded channels:
+//!
+//! ```rust
+//! #[derive(Debug, Clone)]
+//! enum MyMessage {
+//!     DoWork(String),
+//!     Shutdown,
+//! }
+//! ```
+//!
+//! ### Handles and References
+//!
+//! - [`TaskHandle<T>`]: Full control over a task (send, join, kill)
+//! - [`TaskRef<T>`]: Lightweight reference for sending messages only
+//!
+//! ## API Styles
+//!
+//! Notizia supports both macro and method-based APIs:
+//!
+//! ### Macro Style (Recommended)
+//!
+//! ```rust
+//! # use notizia::prelude::*;
+//! # #[derive(Task)]
+//! # #[task(message = Signal)]
+//! # struct Worker;
+//! # impl Runnable<Signal> for Worker { async fn start(&self) {} }
+//! # #[derive(Clone)] enum Signal { Ping }
+//! # #[tokio::main]
+//! # async fn main() {
+//! let worker = Worker;
+//! let handle = spawn!(worker);
+//! send!(handle, Signal::Ping)?;
+//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! # }
+//! ```
+//!
+//! ### Method Style (Alternative)
+//!
+//! ```rust
+//! # use notizia::prelude::*;
+//! # #[derive(Task)]
+//! # #[task(message = Signal)]
+//! # struct Worker;
+//! # impl Runnable<Signal> for Worker { async fn start(&self) {} }
+//! # #[derive(Clone)] enum Signal { Ping }
+//! # #[tokio::main]
+//! # async fn main() {
+//! let worker = Worker;
+//! let handle = worker.run();  // or worker.spawn()
+//! handle.send(Signal::Ping)?;
+//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! # }
+//! ```
+//!
+//! Both styles are equivalent—choose what feels most comfortable.
+//!
+//! ## Error Handling
+//!
+//! Notizia provides explicit, type-safe error handling for all messaging operations:
+//!
+//! - [`recv()`](Task::recv) returns [`RecvResult<T>`](core::errors::RecvResult)
+//! - [`send()`](TaskHandle::send) returns [`SendResult<T>`](core::errors::SendResult)
+//!
+//! ### Pattern 1: Unwrap for Prototypes
+//!
+//! ```rust
+//! # use notizia::prelude::*;
+//! # #[derive(Task)]
+//! # #[task(message = Signal)]
+//! # struct Worker;
+//! # #[derive(Clone)] enum Signal {}
+//! impl Runnable<Signal> for Worker {
+//!     async fn start(&self) {
+//!         loop {
+//!             let msg = recv!(self).unwrap();  // Panics on error
+//!             // Process message...
+//!         }
+//!     }
+//! }
+//! ```
+//!
+//! ### Pattern 2: Error Propagation with `?`
+//!
+//! ```rust
+//! # use notizia::prelude::*;
+//! # use notizia::core::errors::RecvError;
+//! # #[derive(Task)]
+//! # #[task(message = Signal)]
+//! # struct Worker;
+//! # #[derive(Clone)] enum Signal {}
+//! # impl Runnable<Signal> for Worker {
+//! #     async fn start(&self) {
+//! #         let _ = self.process().await;
+//! #     }
+//! # }
+//! # impl Worker {
+//! async fn process(&self) -> Result<(), RecvError> {
+//!     loop {
+//!         let msg = recv!(self)?;  // Propagates errors
+//!         // Process message...
+//!     }
+//! }
+//! # }
+//! ```
+//!
+//! ### Pattern 3: Explicit Handling
+//!
+//! ```rust
+//! # use notizia::prelude::*;
+//! # #[derive(Task)]
+//! # #[task(message = Signal)]
+//! # struct Worker;
+//! # #[derive(Clone)] enum Signal {}
+//! impl Runnable<Signal> for Worker {
+//!     async fn start(&self) {
+//!         loop {
+//!             match recv!(self) {
+//!                 Ok(msg) => { /* Handle message */ }
+//!                 Err(RecvError::Closed) => {
+//!                     println!("Channel closed, shutting down gracefully");
+//!                     break;
+//!                 }
+//!                 Err(e) => {
+//!                     eprintln!("Error: {}", e);
+//!                     break;
+//!                 }
+//!             }
+//!         }
+//!     }
+//! }
+//! ```
+//!
+//! ## Module Organization
+//!
+//! - [`core`] - Core types (mailbox, errors, internal state)
+//! - [`task`] - Task traits and handles
+//! - [`prelude`] - Common imports for convenience
+//!
+//! ## Re-exports
+//!
+//! Notizia re-exports key types at the crate root for convenience:
+
 pub mod core;
+#[doc(hidden)]
+pub mod macros;
+pub mod prelude;
+pub mod task;
 
-use std::future::Future;
-use std::sync::Arc;
+// Re-export core types at crate root
+pub use crate::core::errors::{RecvError, RecvResult, SendResult};
+pub use crate::core::Mailbox;
 
-use tokio::sync::Mutex;
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
-use tokio::task::JoinHandle;
+// Re-export task types at crate root
+pub use crate::task::{Runnable, Task, TaskHandle, TaskRef};
 
+// Note: Macros (spawn!, send!, recv!) are already at crate root via #[macro_export]
+// They don't need to be re-exported here
+
+// Re-export procedural macro
+// Note: We keep the original name 'Task' for the attribute macro
+// until we migrate to derive macro syntax
+#[doc(inline)]
 pub use notizia_gen::Task;
 
+// Re-export Tokio for macro usage (hidden from docs)
+#[doc(hidden)]
 pub use tokio;
 
-use crate::core::errors::{RecvError, RecvResult, SendResult};
-
-#[derive(Clone)]
-pub struct Mailbox<T> {
-    pub receiver: Arc<Mutex<Option<UnboundedReceiver<T>>>>,
-}
-
-impl<T> Default for Mailbox<T> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<T> Mailbox<T> {
-    pub fn new() -> Self {
-        Mailbox {
-            receiver: Arc::new(Mutex::new(None)),
-        }
-    }
-
-    pub async fn set_receiver(&self, receiver: UnboundedReceiver<T>) {
-        *self.receiver.lock().await = Some(receiver);
-    }
-
-    pub async fn recv(&self) -> RecvResult<T> {
-        // Take the receiver out
-        let mut receiver = {
-            let mut slot = self.receiver.lock().await;
-            slot.take().ok_or(RecvError::Poisoned)?
-        };
-
-        // Await without holding the Mutex lock
-        let value = receiver.recv().await.ok_or(RecvError::Closed)?;
-
-        // Put it back
-        *self.receiver.lock().await = Some(receiver);
-
-        Ok(value)
-    }
-}
-
-pub trait Runnable<T>: Send + Sync {
-    fn start(&self) -> impl Future<Output = ()> + Send;
-}
-
-pub trait Task<T>: Runnable<T>
-where
-    T: Send,
-{
-    fn __setup(&self, receiver: UnboundedReceiver<T>) -> impl Future<Output = ()> + Send;
-
-    fn mailbox(&self) -> Mailbox<T>;
-
-    fn run(self) -> TaskHandle<T>;
-
-    fn recv(&self) -> impl Future<Output = RecvResult<T>> + Send {
-        async move { self.mailbox().recv().await }
-    }
-
-    fn this(&self) -> TaskRef<T>;
-}
-pub struct TaskHandle<T>
-where
-    T: 'static,
-{
-    sender: UnboundedSender<T>,
-    handle: JoinHandle<()>,
-}
-
-impl<T> TaskHandle<T>
-where
-    T: 'static,
-{
-    pub fn new(sender: UnboundedSender<T>, handle: JoinHandle<()>) -> Self {
-        TaskHandle { sender, handle }
-    }
-
-    pub async fn join(self) {
-        let _ = self.handle.await;
-    }
-
-    pub fn send(&self, msg: T) -> SendResult<T> {
-        self.sender.send(msg)
-    }
-
-    pub fn kill(self) {
-        self.handle.abort();
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct TaskRef<T> {
-    sender: UnboundedSender<T>,
-}
-
-impl<T> TaskRef<T> {
-    pub fn new(sender: UnboundedSender<T>) -> Self {
-        TaskRef { sender }
-    }
-
-    pub fn send(&self, msg: T) -> SendResult<T> {
-        self.sender.send(msg)
-    }
-}
-
-#[derive(Clone)]
-pub struct TaskState<T> {
-    pub mailbox: Mailbox<T>,
-    pub sender: UnboundedSender<T>,
-}
-
-/// Spawn a task which implements `notizia::Runnable`.
-#[macro_export]
-macro_rules! spawn {
-    ($ident:ident) => {
-        $ident.run()
-    };
-}
-
-/// Send a message to a task which what spawned by `notizia::spawn!()`.
-#[macro_export]
-macro_rules! send {
-    ($task:ident, $msg:expr) => {
-        $task.send($msg)
-    };
-}
-
-#[macro_export]
-macro_rules! recv {
-    ($ident:ident) => {
-        $ident.recv().await
-    };
-}
+// Internal types (hidden from docs)
+#[doc(hidden)]
+pub use crate::core::state::TaskState;
