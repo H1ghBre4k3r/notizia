@@ -5,6 +5,7 @@ use tokio::time::{Duration, sleep};
 
 // Message types and tasks for basic lifecycle tests
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 enum LifecycleMsg {
     Ping,
     Stop,

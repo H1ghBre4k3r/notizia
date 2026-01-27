@@ -5,6 +5,7 @@ use tokio::time::{Duration, sleep};
 
 // Test with struct message type
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct StructMsg {
     value: u32,
     text: String,
@@ -18,13 +19,8 @@ struct StructTask {
 
 impl Runnable<StructMsg> for StructTask {
     async fn start(&self) {
-        loop {
-            match recv!(self) {
-                Ok(msg) => {
-                    self.received.fetch_add(msg.value, Ordering::SeqCst);
-                }
-                Err(_) => break,
-            }
+        while let Ok(msg) = recv!(self) {
+            self.received.fetch_add(msg.value, Ordering::SeqCst);
         }
     }
 }
@@ -53,6 +49,7 @@ async fn derive_macro_works_with_struct_messages() {
 
 // Test with enum message type
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 enum EnumMsg {
     Increment,
     Decrement,
@@ -326,13 +323,8 @@ struct TupleTask {
 
 impl Runnable<TupleMsg> for TupleTask {
     async fn start(&self) {
-        loop {
-            match recv!(self) {
-                Ok(TupleMsg(value, _text)) => {
-                    self.sum.fetch_add(value, Ordering::SeqCst);
-                }
-                Err(_) => break,
-            }
+        while let Ok(TupleMsg(value, _text)) = recv!(self) {
+            self.sum.fetch_add(value, Ordering::SeqCst);
         }
     }
 }

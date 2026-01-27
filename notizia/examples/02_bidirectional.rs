@@ -10,6 +10,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 enum ClientMsg {
     Request(u32),
     Response(u32),

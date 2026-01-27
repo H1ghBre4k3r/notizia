@@ -24,22 +24,17 @@ struct PingTask {
 
 impl Runnable<PingMsg> for PingTask {
     async fn start(&self) {
-        loop {
-            match recv!(self) {
-                Ok(msg) => {
-                    if msg.count >= self.max_count {
-                        self.final_count.store(msg.count, Ordering::SeqCst);
-                        break;
-                    }
-                    // Send back incremented count
-                    msg.sender
-                        .send(PongMsg {
-                            count: msg.count + 1,
-                        })
-                        .unwrap();
-                }
-                Err(_) => break,
+        while let Ok(msg) = recv!(self) {
+            if msg.count >= self.max_count {
+                self.final_count.store(msg.count, Ordering::SeqCst);
+                break;
             }
+            // Send back incremented count
+            msg.sender
+                .send(PongMsg {
+                    count: msg.count + 1,
+                })
+                .unwrap();
         }
     }
 }
@@ -52,18 +47,13 @@ struct PongTask {
 
 impl Runnable<PongMsg> for PongTask {
     async fn start(&self) {
-        loop {
-            match recv!(self) {
-                Ok(msg) => {
-                    if let Some(ref ping) = self.ping_ref {
-                        ping.send(PingMsg {
-                            sender: self.this(),
-                            count: msg.count + 1,
-                        })
-                        .unwrap();
-                    }
-                }
-                Err(_) => break,
+        while let Ok(msg) = recv!(self) {
+            if let Some(ref ping) = self.ping_ref {
+                ping.send(PingMsg {
+                    sender: self.this(),
+                    count: msg.count + 1,
+                })
+                .unwrap();
             }
         }
     }
@@ -81,13 +71,8 @@ struct SimpleTask {
 
 impl Runnable<SimpleMsg> for SimpleTask {
     async fn start(&self) {
-        loop {
-            match recv!(self) {
-                Ok(_) => {
-                    self.received.fetch_add(1, Ordering::SeqCst);
-                }
-                Err(_) => break,
-            }
+        while recv!(self).is_ok() {
+            self.received.fetch_add(1, Ordering::SeqCst);
         }
     }
 }
@@ -163,11 +148,8 @@ impl Runnable<SelfMsg> for SelfReferencingTask {
         my_ref.send(SelfMsg).unwrap();
 
         // Receive the message
-        match recv!(self) {
-            Ok(_) => {
-                self.sent_to_self.store(true, Ordering::SeqCst);
-            }
-            Err(_) => {}
+        if recv!(self).is_ok() {
+            self.sent_to_self.store(true, Ordering::SeqCst);
         }
     }
 }

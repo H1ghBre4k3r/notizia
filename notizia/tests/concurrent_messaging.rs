@@ -44,13 +44,8 @@ struct CounterTask {
 
 impl Runnable<CountMsg> for CounterTask {
     async fn start(&self) {
-        loop {
-            match recv!(self) {
-                Ok(_) => {
-                    self.count.fetch_add(1, Ordering::SeqCst);
-                }
-                Err(_) => break,
-            }
+        while recv!(self).is_ok() {
+            self.count.fetch_add(1, Ordering::SeqCst);
         }
     }
 }
@@ -61,6 +56,7 @@ struct UniqueMsg;
 
 #[derive(Task)]
 #[task(message = UniqueMsg)]
+#[allow(dead_code)]
 struct UniqueReceiver {
     id: u32,
     count: Arc<AtomicU32>,
@@ -68,13 +64,8 @@ struct UniqueReceiver {
 
 impl Runnable<UniqueMsg> for UniqueReceiver {
     async fn start(&self) {
-        loop {
-            match recv!(self) {
-                Ok(_) => {
-                    self.count.fetch_add(1, Ordering::SeqCst);
-                }
-                Err(_) => break,
-            }
+        while recv!(self).is_ok() {
+            self.count.fetch_add(1, Ordering::SeqCst);
         }
     }
 }
@@ -91,13 +82,8 @@ struct BurstTask {
 
 impl Runnable<BurstMsg> for BurstTask {
     async fn start(&self) {
-        loop {
-            match recv!(self) {
-                Ok(_) => {
-                    self.count.fetch_add(1, Ordering::SeqCst);
-                }
-                Err(_) => break,
-            }
+        while recv!(self).is_ok() {
+            self.count.fetch_add(1, Ordering::SeqCst);
         }
     }
 }
@@ -138,13 +124,8 @@ struct ResponseTask {
 
 impl Runnable<ResponseMsg> for ResponseTask {
     async fn start(&self) {
-        loop {
-            match recv!(self) {
-                Ok(_) => {
-                    self.received.fetch_add(1, Ordering::SeqCst);
-                }
-                Err(_) => break,
-            }
+        while recv!(self).is_ok() {
+            self.received.fetch_add(1, Ordering::SeqCst);
         }
     }
 }
