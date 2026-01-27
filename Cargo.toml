@@ -11,6 +11,7 @@ readme = "README.md"
 repository = "https://github.com/H1ghBre4k3r/notizia"
 
 [workspace.dependencies]
+futures = "0.3.31"
 notizia_gen = { version = "0.3.0", path = "notizia_gen" }
 thiserror = "2.0.18"
 tokio = { version = "1.49.0", features = ["full"] }

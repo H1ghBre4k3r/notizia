@@ -1,9 +1,12 @@
 //! Task handle for controlling spawned tasks.
 
+use std::time::Duration;
+
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::task::JoinHandle;
 
 use crate::core::errors::SendResult;
+use crate::{ShutdownError, ShutdownResult, TerminateReason};
 
 /// Handle for a spawned task.
 ///
@@ -43,7 +46,7 @@ where
     T: 'static,
 {
     sender: UnboundedSender<T>,
-    handle: JoinHandle<()>,
+    handle: JoinHandle<TerminateReason>,
 }
 
 impl<T> TaskHandle<T>
@@ -54,14 +57,25 @@ where
     ///
     /// This is typically called by the generated code and not by user code directly.
     #[doc(hidden)]
-    pub fn new(sender: UnboundedSender<T>, handle: JoinHandle<()>) -> Self {
+    pub fn new(sender: UnboundedSender<T>, handle: JoinHandle<TerminateReason>) -> Self {
         TaskHandle { sender, handle }
     }
 
-    /// Wait for the task to complete.
+    /// Wait for the task to complete without signaling shutdown.
     ///
-    /// This method consumes the handle and awaits the completion of the task.
-    /// If the task panics, the panic will be propagated.
+    /// This method does NOT close the message channel. It simply waits
+    /// for the task to complete on its own. The task's `terminate()` hook
+    /// will still be called when the task finishes.
+    ///
+    /// Use [`shutdown()`](Self::shutdown) to actively signal shutdown
+    /// and enforce a timeout.
+    ///
+    /// Returns the reason the task terminated.
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`JoinError`](tokio::task::JoinError) if the task was
+    /// aborted or an unexpected error occurred (rare).
     ///
     /// # Example
     ///
@@ -71,23 +85,26 @@ where
     /// # #[task(message = Signal)]
     /// # struct Worker;
     /// # impl Runnable<Signal> for Worker {
-    /// #     async fn start(&self) {}
+    /// #     async fn start(&self) {
+    /// #         // Task stops on its own after some work
+    /// #     }
     /// # }
     /// # #[derive(Clone)]
     /// # enum Signal {}
     /// # #[tokio::main]
-    /// # async fn main() {
+    /// # async fn main() -> Result<(), tokio::task::JoinError> {
     /// let worker = Worker;
     /// let handle = spawn!(worker);
     ///
-    /// // Do some work...
+    /// // Task will finish on its own
+    /// let reason = handle.join().await?;
     ///
-    /// // Wait for task to finish
-    /// handle.join().await;
+    /// println!("Task finished: {}", reason);
+    /// # Ok(())
     /// # }
     /// ```
-    pub async fn join(self) {
-        let _ = self.handle.await;
+    pub async fn join(self) -> Result<TerminateReason, tokio::task::JoinError> {
+        self.handle.await
     }
 
     /// Send a message to the task.
@@ -156,6 +173,99 @@ where
     /// ```
     pub fn kill(self) {
         self.handle.abort();
+    }
+
+    /// Gracefully shutdown the task with a timeout.
+    ///
+    /// This method initiates a graceful shutdown by:
+    /// 1. Closing the message channel (task receives `RecvError::Closed`)
+    /// 2. Waiting for the task's `start()` to complete
+    /// 3. Calling the task's `terminate()` hook
+    /// 4. Enforcing the timeout; aborting if exceeded
+    ///
+    /// Returns the reason the task terminated (`Normal` or `Panic`).
+    ///
+    /// # Arguments
+    ///
+    /// * `timeout` - Maximum duration to wait for `terminate()` to complete
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ShutdownError::Timeout`] if `terminate()` takes longer than the timeout.
+    /// In this case, the task is forcefully aborted.
+    ///
+    /// Returns [`ShutdownError::JoinError`] if an unexpected join error occurs.
+    ///
+    /// # Notes
+    ///
+    /// - This method works by dropping the sender, which closes the channel
+    /// - If [`TaskRef`](crate::TaskRef) clones exist, they keep the channel alive
+    /// - Tasks must handle `RecvError::Closed` to detect shutdown
+    /// - Message queue draining is the task's responsibility
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use notizia::prelude::*;
+    /// # use std::time::Duration;
+    /// # #[derive(Task)]
+    /// # #[task(message = Signal)]
+    /// # struct Worker;
+    /// # impl Runnable<Signal> for Worker {
+    /// #     async fn start(&self) {
+    /// #         loop {
+    /// #             match recv!(self) {
+    /// #                 Ok(_) => {}
+    /// #                 Err(_) => break,
+    /// #             }
+    /// #         }
+    /// #     }
+    /// #     async fn terminate(&self, _reason: TerminateReason) {
+    /// #         // Cleanup resources
+    /// #     }
+    /// # }
+    /// # #[derive(Clone)]
+    /// # enum Signal { Stop }
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), ShutdownError> {
+    /// let worker = Worker;
+    /// let handle = spawn!(worker);
+    ///
+    /// // Send some work...
+    /// // handle.send(Signal::Stop)?;
+    ///
+    /// // Gracefully shutdown with 5 second timeout
+    /// match handle.shutdown(Duration::from_secs(5)).await {
+    ///     Ok(TerminateReason::Normal) => println!("Clean shutdown"),
+    ///     Ok(TerminateReason::Panic(msg)) => eprintln!("Task panicked: {}", msg),
+    ///     Err(ShutdownError::Timeout) => eprintln!("Shutdown timed out"),
+    ///     Err(e) => eprintln!("Shutdown error: {}", e),
+    /// }
+    /// # Ok(())
+    /// # }
+    ///    
+    pub async fn shutdown(self, timeout: Duration) -> ShutdownResult {
+        // Step 1: Close the channel to signal shutdown
+        // When the sender is dropped, receivers get RecvError::Closed
+        // Note: If TaskRef clones exist, they keep the channel alive
+        drop(self.sender);
+
+        // Step 2: Wait for the task to complete with timeout
+        // The task will:
+        //   - Complete start() (normally or with panic)
+        //   - Call terminate(reason)
+        //   - Return TerminateReason
+        match tokio::time::timeout(timeout, self.handle).await {
+            // Timeout succeeded, join succeeded - task completed
+            Ok(Ok(reason)) => Ok(reason),
+
+            // Timeout succeeded, but join failed
+            // This shouldn't happen since we catch panics in __setup
+            Ok(Err(join_err)) => Err(ShutdownError::JoinError(join_err)),
+
+            // Timeout elapsed - terminate() took too long
+            Err(_elapsed) => Err(ShutdownError::Timeout),
+        }
     }
 
     /// Get a reference to this task.

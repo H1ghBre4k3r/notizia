@@ -47,5 +47,8 @@ async fn main() {
 
     let handle = spawn!(task);
 
-    handle.join().await
+    match handle.join().await {
+        Ok(reason) => println!("Terminated: {reason}"),
+        Err(e) => eprintln!("{e}"),
+    }
 }
