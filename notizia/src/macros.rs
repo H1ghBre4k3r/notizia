@@ -2,7 +2,8 @@
 //!
 //! This module provides ergonomic macros for common task operations:
 //! - [`spawn!`] - Spawn a task
-//! - [`send!`] - Send a message to a task
+//! - [`send!`] / [`cast!`] - Send a message to a task (fire-and-forget)
+//! - [`call!`] - Call a task and wait for response (request-response)
 //! - [`recv!`] - Receive a message (must be awaited)
 //!
 //! These macros are provided for convenience and consistency with the
@@ -101,8 +102,9 @@ macro_rules! send {
 ///
 /// ```no_run
 /// # use notizia::prelude::*;
+/// # use notizia::call;
 /// # use tokio::sync::oneshot;
-/// # #[derive(Clone)]
+/// # #[derive(Debug)]
 /// enum Msg {
 ///     GetStatus { reply_to: oneshot::Sender<u32> },
 /// }
@@ -152,6 +154,7 @@ macro_rules! call {
 ///
 /// ```no_run
 /// # use notizia::prelude::*;
+/// # use notizia::cast;
 /// # #[derive(Clone)]
 /// # enum Signal { Increment }
 /// # #[derive(Task)]

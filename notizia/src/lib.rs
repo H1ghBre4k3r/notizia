@@ -226,6 +226,102 @@
 //! }
 //! ```
 //!
+//! ## Request-Response Patterns
+//!
+//! Notizia supports both synchronous (request-response) and asynchronous (fire-and-forget)
+//! messaging patterns, inspired by Erlang/Elixir GenServer semantics.
+//!
+//! ### Synchronous: `call!`
+//!
+//! Use [`call!`](crate::call!) for request-response interactions that block until a reply 
+//! is received. The macro automatically creates a oneshot channel, sends the request, and 
+//! waits for the response with timeout protection.
+//!
+//! ```rust,no_run
+//! # use notizia::prelude::*;
+//! # use notizia::call;
+//! # use tokio::sync::oneshot;
+//! # #[derive(Debug)]
+//! # enum Msg { GetStatus { reply_to: oneshot::Sender<u32> } }
+//! # #[derive(Task)]
+//! # #[task(message = Msg)]
+//! # struct Worker;
+//! # impl Runnable<Msg> for Worker { async fn start(&self) {} }
+//! # #[tokio::main]
+//! # async fn main() -> Result<(), CallError> {
+//! # let worker = Worker;
+//! # let handle = spawn!(worker);
+//! // Default 5 second timeout
+//! let status = call!(handle, |tx| Msg::GetStatus { reply_to: tx }).await?;
+//!
+//! // Custom timeout (1 second = 1000ms)
+//! let status = call!(handle, |tx| Msg::GetStatus { reply_to: tx }, timeout = 1000).await?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ### Asynchronous: `cast!`
+//!
+//! Use [`cast!`](crate::cast!) for fire-and-forget messages that don't require a response.
+//! `cast!` is an alias for [`send!`](crate::send!) that matches GenServer naming conventions.
+//!
+//! ```rust,no_run
+//! # use notizia::prelude::*;
+//! # use notizia::cast;
+//! # #[derive(Debug)]
+//! # enum Signal { Ping }
+//! # #[derive(Task)]
+//! # #[task(message = Signal)]
+//! # struct Worker;
+//! # impl Runnable<Signal> for Worker { async fn start(&self) {} }
+//! # #[tokio::main]
+//! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! # let worker = Worker;
+//! # let handle = spawn!(worker);
+//! // Fire-and-forget, returns immediately
+//! cast!(handle, Signal::Ping)?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ### Handling Call Messages
+//!
+//! Tasks respond to call messages by sending a value through the oneshot channel:
+//!
+//! ```rust,ignore
+//! # use notizia::prelude::*;
+//! # use tokio::sync::oneshot;
+//! # use std::sync::Arc;
+//! # use std::sync::atomic::{AtomicU32, Ordering};
+//! #[derive(Debug)]
+//! enum Msg {
+//!     GetCount { reply_to: oneshot::Sender<u32> },
+//!     Increment,
+//! }
+//!
+//! # #[derive(Task)]
+//! # #[task(message = Msg)]
+//! # struct Counter { count: Arc<AtomicU32> }
+//! impl Runnable<Msg> for Counter {
+//!     async fn start(&self) {
+//!         loop {
+//!             match recv!(self) {
+//!                 Ok(Msg::GetCount { reply_to }) => {
+//!                     let count = self.count.load(Ordering::SeqCst);
+//!                     let _ = reply_to.send(count); // Send response
+//!                 }
+//!                 Ok(Msg::Increment) => {
+//!                     self.count.fetch_add(1, Ordering::SeqCst);
+//!                 }
+//!                 Err(_) => break,
+//!             }
+//!         }
+//!     }
+//! }
+//! ```
+//!
+//! See `examples/06_call_cast.rs` for a complete demonstration.
+//!
 //! ## Module Organization
 //!
 //! - [`core`] - Core types (mailbox, errors, internal state)
