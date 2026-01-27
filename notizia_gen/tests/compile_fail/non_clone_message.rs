@@ -6,7 +6,8 @@ struct NonCloneMessage {
     data: String,
 }
 
-#[Task(NonCloneMessage)]
+#[derive(Task)]
+#[task(message = NonCloneMessage)]
 struct MyTask;
 
 fn main() {}

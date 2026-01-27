@@ -14,6 +14,7 @@ impl ::core::fmt::Debug for PingMessage {
         ::core::fmt::Formatter::write_str(f, "PingMessage")
     }
 }
+#[task(message = PingMessage)]
 struct PingTask;
 impl notizia::Task<PingMessage> for PingTask {
     fn __setup(
