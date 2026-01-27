@@ -8,14 +8,20 @@
 //! ```
 //!
 //! This brings into scope:
-//! - Core types: [`Mailbox`], error types ([`RecvError`], [`RecvResult`], [`SendResult`])
+//! - Core types: [`Mailbox`], error types ([`RecvError`], [`RecvResult`], [`SendResult`], [`CallError`], [`CallResult`])
 //! - Task types: [`Task`], [`Runnable`], [`TaskHandle`], [`TaskRef`]
 //! - Macros: [`spawn!`], [`send!`], [`recv!`]
 //! - Derive macro: [`Task`] (for `#[derive(Task)]`)
+//!
+//! Note: For request-response patterns, you'll also want to import `call!` and `cast!`:
+//! ```
+//! use notizia::prelude::*;
+//! use notizia::{call, cast};
+//! ```
 
-pub use crate::core::Mailbox;
 pub use crate::core::errors::{CallError, CallResult, RecvError, RecvResult, SendResult};
 pub use crate::core::lifecycle::{ShutdownError, ShutdownResult, TerminateReason};
+pub use crate::core::Mailbox;
 pub use crate::task::{Runnable, Task, TaskHandle, TaskRef};
 
 // Macros are already exported at crate root via #[macro_export]
