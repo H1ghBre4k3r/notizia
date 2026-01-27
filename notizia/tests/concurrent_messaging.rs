@@ -168,7 +168,7 @@ async fn multiple_senders_to_one_receiver() {
     t3.await.unwrap();
 
     handle.send(ConcurrentMsg::Stop).unwrap();
-    handle.join().await;
+    let _ = handle.join().await;
 
     let values = received.lock().await;
     assert_eq!(values.len(), 30);
@@ -216,7 +216,7 @@ async fn message_ordering_from_single_sender() {
     }
 
     handle.send(ConcurrentMsg::Stop).unwrap();
-    handle.join().await;
+    let _ = handle.join().await;
 
     let values = received.lock().await;
 
@@ -320,7 +320,7 @@ async fn concurrent_send_and_receive() {
     assert_eq!(responses.load(Ordering::SeqCst), 100);
 
     echo_handle.send(EchoMsg::Stop).unwrap();
-    echo_handle.join().await;
+    let _ = echo_handle.join().await;
 
     drop(response_handle);
 }

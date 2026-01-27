@@ -95,7 +95,7 @@ async fn derive_macro_works_with_enum_messages() {
     handle.send(EnumMsg::Decrement).unwrap();
     handle.send(EnumMsg::Stop).unwrap();
 
-    handle.join().await;
+    let _ = handle.join().await;
 
     assert_eq!(value.load(Ordering::SeqCst), 2);
 }
@@ -121,7 +121,7 @@ async fn derive_macro_works_with_unit_struct() {
     let handle = spawn!(task);
 
     handle.send(UnitMsg).unwrap();
-    handle.join().await;
+    let _ = handle.join().await;
 }
 
 // Test with struct with multiple fields
@@ -172,7 +172,7 @@ async fn derive_macro_works_with_multi_field_struct() {
     assert!(flag.load(Ordering::SeqCst));
 
     handle.send(MultiFieldMsg::Stop).unwrap();
-    handle.join().await;
+    let _ = handle.join().await;
 }
 
 // TODO: Test with generic message type
@@ -272,7 +272,7 @@ async fn derive_macro_works_with_nested_enums() {
     assert_eq!(count.load(Ordering::SeqCst), 11); // 5 + 6
 
     handle.send(OuterMsg::Stop).unwrap();
-    handle.join().await;
+    let _ = handle.join().await;
 }
 
 // Test multiple tasks with different message types
@@ -301,7 +301,7 @@ async fn multiple_task_types_can_coexist() {
     h2.send(EnumMsg::Increment).unwrap();
     h2.send(EnumMsg::Stop).unwrap();
 
-    h2.join().await;
+    let _ = h2.join().await;
 
     sleep(Duration::from_millis(10)).await;
 

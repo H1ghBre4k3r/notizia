@@ -20,11 +20,46 @@ impl notizia::Task<CounterMsg> for CounterTask {
     fn __setup(
         &self,
         receiver: notizia::tokio::sync::mpsc::UnboundedReceiver<CounterMsg>,
-    ) -> impl std::future::Future<Output = ()> + Send {
+    ) -> impl std::future::Future<Output = notizia::TerminateReason> + Send {
         async move {
             let mb = self.mailbox();
             mb.set_receiver(receiver).await;
-            self.start().await
+            let start_result = notizia::futures::FutureExt::catch_unwind(
+                    std::panic::AssertUnwindSafe(self.start()),
+                )
+                .await;
+            let reason = match start_result {
+                Ok(()) => notizia::TerminateReason::Normal,
+                Err(panic_payload) => {
+                    let msg = if let Some(s) = panic_payload.downcast_ref::<&str>() {
+                        s.to_string()
+                    } else if let Some(s) = panic_payload.downcast_ref::<String>() {
+                        s.clone()
+                    } else {
+                        "unknown panic".to_string()
+                    };
+                    notizia::TerminateReason::Panic(msg)
+                }
+            };
+            let terminate_result = notizia::futures::FutureExt::catch_unwind(
+                    std::panic::AssertUnwindSafe(self.terminate(reason.clone())),
+                )
+                .await;
+            if let Err(terminate_panic) = terminate_result {
+                let msg = if let Some(s) = terminate_panic.downcast_ref::<&str>() {
+                    s.to_string()
+                } else if let Some(s) = terminate_panic.downcast_ref::<String>() {
+                    s.clone()
+                } else {
+                    "unknown panic".to_string()
+                };
+                {
+                    ::std::io::_eprint(
+                        format_args!("Warning: terminate() hook panicked: {0}\n", msg),
+                    );
+                };
+            }
+            reason
         }
     }
     fn mailbox(&self) -> notizia::Mailbox<CounterMsg> {

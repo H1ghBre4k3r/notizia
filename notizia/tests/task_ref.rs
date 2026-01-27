@@ -193,7 +193,7 @@ async fn task_ref_can_send_messages() {
         .unwrap();
 
     // Wait for completion
-    ping_handle.join().await;
+    let _ = ping_handle.join().await;
 
     // Ping-pong goes: 0->1->2->3->4->5->6, and ping stops at 6 (>= 5)
     assert_eq!(final_count.load(Ordering::SeqCst), 6);
@@ -267,10 +267,10 @@ async fn task_ref_can_be_passed_to_multiple_tasks() {
     h3.send(SenderMsg::Stop).unwrap();
     collector_handle.send(CollectorMsg::Stop).unwrap();
 
-    h1.join().await;
-    h2.join().await;
-    h3.join().await;
-    collector_handle.join().await;
+    let _ = h1.join().await;
+    let _ = h2.join().await;
+    let _ = h3.join().await;
+    let _ = collector_handle.join().await;
 }
 
 #[tokio::test]
@@ -281,7 +281,7 @@ async fn task_ref_this_returns_working_reference() {
     };
     let handle = spawn!(task);
 
-    handle.join().await;
+    let _ = handle.join().await;
 
     assert!(
         sent.load(Ordering::SeqCst),
@@ -296,7 +296,7 @@ async fn task_ref_send_fails_when_task_terminated() {
     let task_ref = handle.this();
 
     // Wait for task to complete
-    handle.join().await;
+    let _ = handle.join().await;
 
     // Sending should fail
     assert!(task_ref.send(QuickMsg).is_err());

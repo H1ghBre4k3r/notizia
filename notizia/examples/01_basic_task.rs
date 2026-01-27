@@ -65,7 +65,7 @@ async fn main() {
 
     // Graceful shutdown
     handle.send(Message::Stop).unwrap();
-    handle.join().await;
+    let _ = handle.join().await;
 
     println!("\nAll tasks completed!");
 }
