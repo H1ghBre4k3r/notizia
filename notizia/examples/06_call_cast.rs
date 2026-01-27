@@ -12,13 +12,15 @@ use notizia::{call, cast};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 use tokio::sync::oneshot;
-use tokio::time::{sleep, Duration};
+use tokio::time::{Duration, sleep};
 
 /// Message protocol for our counter service
 #[derive(Debug)]
 enum CounterMsg {
     // Synchronous operations (require response)
-    GetCount { reply_to: oneshot::Sender<u32> },
+    GetCount {
+        reply_to: oneshot::Sender<u32>,
+    },
     GetStats {
         reply_to: oneshot::Sender<CounterStats>,
     },
@@ -55,7 +57,7 @@ impl Runnable<CounterMsg> for Counter {
                 // Synchronous operations - send response back
                 Ok(CounterMsg::GetCount { reply_to }) => {
                     let count = self.count.load(Ordering::SeqCst);
-                    if let Err(_) = reply_to.send(count) {
+                    if reply_to.send(count).is_err() {
                         eprintln!("Failed to send count response");
                     }
                 }
@@ -65,7 +67,7 @@ impl Runnable<CounterMsg> for Counter {
                         current: self.count.load(Ordering::SeqCst),
                         total_operations: self.operations.load(Ordering::SeqCst),
                     };
-                    if let Err(_) = reply_to.send(stats) {
+                    if reply_to.send(stats).is_err() {
                         eprintln!("Failed to send stats response");
                     }
                 }
@@ -163,7 +165,13 @@ async fn main() {
 
     // Query stats with custom timeout (1 second)
     println!("   Calling GetStats with 1s timeout...");
-    match call!(handle, |tx| CounterMsg::GetStats { reply_to: tx }, timeout = 1000).await {
+    match call!(
+        handle,
+        |tx| CounterMsg::GetStats { reply_to: tx },
+        timeout = 1000
+    )
+    .await
+    {
         Ok(stats) => {
             println!("   ✓ Stats retrieved:");
             println!("     - Current: {}", stats.current);

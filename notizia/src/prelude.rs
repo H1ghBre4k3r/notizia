@@ -19,9 +19,9 @@
 //! use notizia::{call, cast};
 //! ```
 
+pub use crate::core::Mailbox;
 pub use crate::core::errors::{CallError, CallResult, RecvError, RecvResult, SendResult};
 pub use crate::core::lifecycle::{ShutdownError, ShutdownResult, TerminateReason};
-pub use crate::core::Mailbox;
 pub use crate::task::{Runnable, Task, TaskHandle, TaskRef};
 
 // Macros are already exported at crate root via #[macro_export]

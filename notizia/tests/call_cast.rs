@@ -8,7 +8,7 @@ use notizia::{call, cast};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 use tokio::sync::oneshot;
-use tokio::time::{sleep, Duration};
+use tokio::time::{Duration, sleep};
 
 // =============================================================================
 // Test 1: call_returns_response_within_timeout
@@ -84,6 +84,7 @@ struct SlowResponder;
 
 impl Runnable<SlowMsg> for SlowResponder {
     async fn start(&self) {
+        #[allow(clippy::while_let_loop)]
         loop {
             match recv!(self) {
                 Ok(SlowMsg::SlowRequest { reply_to }) => {
@@ -103,7 +104,12 @@ async fn call_returns_timeout_error_when_deadline_exceeded() {
     let handle = spawn!(responder);
 
     // Call with 100ms timeout, but task sleeps for 500ms
-    let result = call!(handle, |tx| SlowMsg::SlowRequest { reply_to: tx }, timeout = 100).await;
+    let result = call!(
+        handle,
+        |tx| SlowMsg::SlowRequest { reply_to: tx },
+        timeout = 100
+    )
+    .await;
 
     assert!(result.is_err(), "Call should timeout");
     match result {
@@ -132,6 +138,7 @@ struct SimpleCounter {
 
 impl Runnable<SimpleMsg> for SimpleCounter {
     async fn start(&self) {
+        #[allow(clippy::while_let_loop)]
         loop {
             match recv!(self) {
                 Ok(SimpleMsg::Count) => {
@@ -196,6 +203,7 @@ struct EchoServer;
 
 impl Runnable<EchoMsg> for EchoServer {
     async fn start(&self) {
+        #[allow(clippy::while_let_loop)]
         loop {
             match recv!(self) {
                 Ok(EchoMsg::Echo { id, reply_to }) => {
@@ -242,7 +250,12 @@ async fn multiple_concurrent_calls_work() {
 
     // Verify all responses are correct (ID matches response)
     for (expected_id, result) in all_results {
-        assert!(result.is_ok(), "Call for ID {} failed: {:?}", expected_id, result);
+        assert!(
+            result.is_ok(),
+            "Call for ID {} failed: {:?}",
+            expected_id,
+            result
+        );
         let actual_id = result.unwrap();
         assert_eq!(
             actual_id, expected_id,
@@ -258,7 +271,10 @@ async fn multiple_concurrent_calls_work() {
 
 #[derive(Debug)]
 enum NeverRespondMsg {
-    NeverRespond { reply_to: oneshot::Sender<()> },
+    NeverRespond {
+        #[allow(dead_code)]
+        reply_to: oneshot::Sender<()>,
+    },
 }
 
 #[derive(Task)]
@@ -267,6 +283,7 @@ struct NeverResponder;
 
 impl Runnable<NeverRespondMsg> for NeverResponder {
     async fn start(&self) {
+        #[allow(clippy::while_let_loop)]
         loop {
             match recv!(self) {
                 Ok(NeverRespondMsg::NeverRespond { reply_to: _ }) => {
@@ -295,7 +312,7 @@ async fn oneshot_channels_cleaned_up_properly() {
     // Since the task drops the reply channel without sending,
     // we should get ChannelClosed error (not Timeout)
     assert!(result.is_err(), "Call should fail when channel is dropped");
-    
+
     match result {
         Err(CallError::ChannelClosed) => {
             // Expected - the sender was dropped without sending
@@ -322,7 +339,12 @@ async fn call_with_custom_timeout() {
     let handle = spawn!(counter);
 
     // Call with custom 1 second timeout
-    let result = call!(handle, |tx| CounterMsg::GetCount { reply_to: tx }, timeout = 1000).await;
+    let result = call!(
+        handle,
+        |tx| CounterMsg::GetCount { reply_to: tx },
+        timeout = 1000
+    )
+    .await;
 
     assert!(result.is_ok(), "Call should succeed with custom timeout");
     assert_eq!(result.unwrap(), 42);
@@ -348,7 +370,7 @@ async fn cast_returns_error_when_task_killed() {
         count: Arc::new(AtomicU32::new(0)),
     };
     let handle2 = spawn!(counter2);
-    
+
     // This cast should succeed because handle2 is alive
     let result = cast!(handle2, SimpleMsg::Count);
     assert!(result.is_ok(), "Cast to live task should succeed");
@@ -374,11 +396,11 @@ async fn call_returns_send_error_when_task_killed() {
         count: Arc::new(AtomicU32::new(0)),
     };
     let handle2 = spawn!(counter2);
-    
+
     // Kill this one too
     handle2.kill();
     sleep(Duration::from_millis(50)).await;
-    
+
     // We can't directly test this without a handle, so this test documents
     // expected behavior rather than testing it
     // In practice, sending to a killed task returns SendError
