@@ -1,0 +1,6 @@
+error: Invalid task attribute format.
+       Use: #[task(message = YourMessageType)]
+ --> tests/compile_fail/invalid_meta_namevalue.rs:8:3
+  |
+8 | #[task = "Message"]
+  |   ^^^^^^^^^^^^^^^^

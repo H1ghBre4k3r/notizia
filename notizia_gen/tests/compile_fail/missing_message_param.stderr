@@ -1,0 +1,6 @@
+error: Expected 'message' parameter.
+       Use: #[task(message = YourMessageType)]
+ --> tests/compile_fail/missing_message_param.rs:8:8
+  |
+8 | #[task(msg = Message)]
+  |        ^^^
