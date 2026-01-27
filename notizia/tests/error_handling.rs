@@ -4,7 +4,8 @@ use notizia::{
     spawn,
 };
 
-#[Task(TestMsg)]
+#[derive(Task)]
+#[task(message = TestMsg)]
 struct TestTask;
 
 #[derive(Debug, Clone)]

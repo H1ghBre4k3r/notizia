@@ -1,30 +1,54 @@
-use quote::{format_ident, quote};
-use syn::{ItemEnum, ItemStruct, parse_macro_input};
-
 use proc_macro::TokenStream;
+use quote::{format_ident, quote};
+use syn::{Attribute, DeriveInput, Error, Meta, MetaNameValue, Result, Type, parse_macro_input};
 
-#[allow(non_snake_case)]
-#[proc_macro_attribute]
-pub fn Task(attrs: TokenStream, input: TokenStream) -> TokenStream {
-    let item = parse_macro_input!(attrs as syn::Path);
-    let ast: syn::Item =
-        syn::parse(input.clone()).expect("#[token] currently only works for items!");
+/// Derive macro for implementing the Task trait.
+///
+/// This macro requires a `#[task(message = T)]` attribute to specify the message type.
+///
+/// # Example
+///
+/// ```rust
+/// use notizia::prelude::*;
+///
+/// #[derive(Task)]
+/// #[task(message = MyMessage)]
+/// struct MyTask {
+///     id: usize,
+/// }
+///
+/// impl Runnable<MyMessage> for MyTask {
+///     async fn start(&self) {
+///         // Task logic here
+///     }
+/// }
+/// # #[derive(Clone)]
+/// # enum MyMessage {}
+/// ```
+#[proc_macro_derive(Task, attributes(task))]
+pub fn derive_task(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
 
-    let name = match &ast {
-        syn::Item::Enum(ItemEnum { ident, .. }) => ident,
-        syn::Item::Struct(ItemStruct { ident, .. }) => ident,
-        _ => todo!(),
-    };
+    match impl_task_derive(&input) {
+        Ok(tokens) => tokens.into(),
+        Err(err) => err.to_compile_error().into(),
+    }
+}
 
+fn impl_task_derive(input: &DeriveInput) -> Result<quote::__private::TokenStream> {
+    let name = &input.ident;
+
+    // Parse the #[task(message = T)] attribute
+    let message_type = parse_task_attribute(&input.attrs)?;
+
+    // Generate the module name for task-local storage
     let mod_name = format_ident!("__{name}_gen");
-
     let task_state = format_ident!("{name}State");
 
+    // Generate the Task trait implementation
     let generated = quote! {
-        #ast
-
-        impl notizia::Task<#item> for #name {
-            fn __setup(&self, receiver: notizia::tokio::sync::mpsc::UnboundedReceiver<#item>) -> impl std::future::Future<Output = ()> + Send {
+        impl notizia::Task<#message_type> for #name {
+            fn __setup(&self, receiver: notizia::tokio::sync::mpsc::UnboundedReceiver<#message_type>) -> impl std::future::Future<Output = ()> + Send {
                 async move {
                     let mb = self.mailbox();
 
@@ -34,12 +58,12 @@ pub fn Task(attrs: TokenStream, input: TokenStream) -> TokenStream {
                 }
             }
 
-            fn mailbox(&self) -> notizia::Mailbox<#item> {
+            fn mailbox(&self) -> notizia::Mailbox<#message_type> {
                 #mod_name::#task_state.get().mailbox
             }
 
-            fn run(self) -> notizia::TaskHandle<#item> {
-                let (sender, receiver) = notizia::tokio::sync::mpsc::unbounded_channel::<#item>();
+            fn run(self) -> notizia::TaskHandle<#message_type> {
+                let (sender, receiver) = notizia::tokio::sync::mpsc::unbounded_channel::<#message_type>();
 
                 let task = #mod_name::#task_state.scope(notizia::TaskState {
                     mailbox: notizia::Mailbox::new(),
@@ -54,20 +78,83 @@ pub fn Task(attrs: TokenStream, input: TokenStream) -> TokenStream {
                 notizia::TaskHandle::new(sender, handle)
             }
 
-            fn this(&self) -> notizia::TaskRef<#item> {
+            fn this(&self) -> notizia::TaskRef<#message_type> {
                 notizia::TaskRef::new(#mod_name::#task_state.get().sender)
             }
         }
 
-
-        mod #mod_name{
+        mod #mod_name {
             use super::*;
 
             tokio::task_local! {
-                pub static #task_state: notizia::TaskState<#item>;
+                pub static #task_state: notizia::TaskState<#message_type>;
             }
         }
     };
 
-    generated.into()
+    Ok(generated)
+}
+
+/// Parse the #[task(message = T)] attribute to extract the message type.
+fn parse_task_attribute(attrs: &[Attribute]) -> Result<Type> {
+    // Find the #[task(...)] attribute
+    let task_attr = attrs
+        .iter()
+        .find(|attr| attr.path().is_ident("task"))
+        .ok_or_else(|| {
+            Error::new_spanned(
+                &attrs.first(),
+                "Missing #[task(message = T)] attribute. \
+                 The Task derive macro requires specifying the message type.\n\
+                 Example: #[task(message = MyMessage)]",
+            )
+        })?;
+
+    // Parse the attribute as a list: #[task(message = T)]
+    let meta = &task_attr.meta;
+
+    match meta {
+        Meta::List(list) => {
+            // Parse the nested meta items
+            let nested: MetaNameValue = syn::parse2(list.tokens.clone()).map_err(|_| {
+                Error::new_spanned(
+                    meta,
+                    "Expected #[task(message = Type)].\n\
+                     The task attribute must be in the form: #[task(message = YourMessageType)]",
+                )
+            })?;
+
+            // Check that the name is "message"
+            if !nested.path.is_ident("message") {
+                return Err(Error::new_spanned(
+                    &nested.path,
+                    "Expected 'message' parameter.\n\
+                     Use: #[task(message = YourMessageType)]",
+                ));
+            }
+
+            // Extract the type from the value
+            match &nested.value {
+                syn::Expr::Path(expr_path) => Ok(Type::Path(syn::TypePath {
+                    qself: None,
+                    path: expr_path.path.clone(),
+                })),
+                _ => Err(Error::new_spanned(
+                    &nested.value,
+                    "Expected a type for the message parameter.\n\
+                     Example: #[task(message = MyMessage)]",
+                )),
+            }
+        }
+        Meta::Path(_) => Err(Error::new_spanned(
+            meta,
+            "The #[task] attribute requires parameters.\n\
+             Use: #[task(message = YourMessageType)]",
+        )),
+        Meta::NameValue(_) => Err(Error::new_spanned(
+            meta,
+            "Invalid task attribute format.\n\
+             Use: #[task(message = YourMessageType)]",
+        )),
+    }
 }

@@ -1,6 +1,7 @@
-use notizia::{Runnable, Task, TaskRef, recv, send, spawn};
+use notizia::prelude::*;
 
-#[Task(PingMsg)]
+#[derive(Task)]
+#[task(message = PingMsg)]
 struct PingProc;
 
 #[derive(Debug, Clone)]
@@ -21,7 +22,8 @@ impl Runnable<PingMsg> for PingProc {
     }
 }
 
-#[Task(PongMsg)]
+#[derive(Task)]
+#[task(message = PongMsg)]
 struct PongProc;
 
 #[derive(Debug, Clone)]
