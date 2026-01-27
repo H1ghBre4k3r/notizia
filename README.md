@@ -193,7 +193,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-notizia = "0.2"
+notizia = "0.3"
 tokio = { version = "1", features = ["full"] }
 ```
 
