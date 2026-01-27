@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
-use syn::{parse_macro_input, Attribute, DeriveInput, Error, Meta, MetaNameValue, Result, Type};
+use syn::{Attribute, DeriveInput, Error, Meta, MetaNameValue, Result, Type, parse_macro_input};
 
 /// Derive macro for implementing the Task trait.
 ///
@@ -104,7 +104,7 @@ fn parse_task_attribute(attrs: &[Attribute]) -> Result<Type> {
         .find(|attr| attr.path().is_ident("task"))
         .ok_or_else(|| {
             Error::new_spanned(
-                &attrs.first(),
+                attrs.first(),
                 "Missing #[task(message = T)] attribute. \
                  The Task derive macro requires specifying the message type.\n\
                  Example: #[task(message = MyMessage)]",

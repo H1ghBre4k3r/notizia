@@ -157,4 +157,34 @@ where
     pub fn kill(self) {
         self.handle.abort();
     }
+
+    /// Get a reference to this task.
+    ///
+    /// Returns a [`TaskRef`](super::TaskRef) that can be used to send messages to this task.
+    /// This is useful for passing lightweight references to other tasks.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use notizia::prelude::*;
+    /// # #[derive(Clone)]
+    /// # enum Signal { Ping }
+    /// # #[derive(Task)]
+    /// # #[task(message = Signal)]
+    /// # struct Worker;
+    /// # impl Runnable<Signal> for Worker {
+    /// #     async fn start(&self) {}
+    /// # }
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// let worker = Worker;
+    /// let handle = spawn!(worker);
+    ///
+    /// // Get a reference to send to other tasks
+    /// let task_ref = handle.this();
+    /// # }
+    /// ```
+    pub fn this(&self) -> super::TaskRef<T> {
+        super::TaskRef::new(self.sender.clone())
+    }
 }

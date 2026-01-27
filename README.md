@@ -23,7 +23,7 @@ We built Notizia to solve the "setup tax" of spawning async tasks. Instead of ma
 Add Notizia to your project and define your first task in seconds.
 
 ```rust
-use notizia::{Task, Runnable, spawn, recv, send};
+use notizia::prelude::*;
 
 // 1. Define your message protocol
 // Clone is required for messages passed through channels
@@ -34,7 +34,8 @@ enum Signal {
 }
 
 // 2. Define your state and attach the Task capability
-#[Task(Signal)]
+#[derive(Task)]
+#[task(message = Signal)]
 struct Worker {
     id: usize,
 }
@@ -44,8 +45,10 @@ impl Runnable<Signal> for Worker {
     async fn start(&self) {
         loop {
             // Type-safe message receiving
-            let msg = recv!(self).unwrap();
-            println!("Worker {} received: {:?}", self.id, msg);
+            match recv!(self) {
+                Ok(msg) => println!("Worker {} received: {:?}", self.id, msg),
+                Err(_) => break,
+            }
         }
     }
 }
@@ -56,10 +59,33 @@ async fn main() {
     let worker = Worker { id: 1 };
     let handle = spawn!(worker);
 
-    send!(handle, Signal::Ping).expect("failed to send");
+    handle.send(Signal::Ping).expect("failed to send");
     
     handle.join().await;
 }
+```
+
+## Examples
+
+The `notizia/examples/` directory contains complete, runnable examples demonstrating various patterns:
+
+- **`01_basic_task.rs`** - Simple message passing and graceful shutdown
+- **`02_bidirectional.rs`** - Request-response pattern between tasks
+- **`03_supervisor.rs`** - Supervisor managing a worker pool
+- **`04_error_handling.rs`** - Error recovery and channel closure handling
+- **`05_macro_vs_methods.rs`** - Comparison of macro and method-based API styles
+
+Run examples from the workspace root:
+```bash
+cargo run -p notizia --example 01_basic_task
+cargo run -p notizia --example 02_bidirectional
+cargo run -p notizia --example 03_supervisor
+```
+
+Or from the `notizia/` directory:
+```bash
+cd notizia
+cargo run --example 01_basic_task
 ```
 
 ## Error Handling
@@ -80,12 +106,13 @@ Notizia provides explicit, type-safe error handling for all messaging operations
 For prototypes or when you want to panic on errors:
 
 ```rust
-use notizia::{Task, Runnable, spawn, recv, send};
+use notizia::prelude::*;
 
 #[derive(Debug, Clone)]
 enum Message { Ping }
 
-#[Task(Message)]
+#[derive(Task)]
+#[task(message = Message)]
 struct Worker;
 
 impl Runnable<Message> for Worker {
@@ -102,7 +129,7 @@ async fn main() {
     let worker = Worker;
     let handle = spawn!(worker);
     
-    send!(handle, Message::Ping).expect("failed to send");
+    handle.send(Message::Ping).expect("failed to send");
 }
 ```
 
@@ -166,7 +193,8 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-notizia = "0.1"
+notizia = "0.2"
+tokio = { version = "1", features = ["full"] }
 ```
 
 ## Development

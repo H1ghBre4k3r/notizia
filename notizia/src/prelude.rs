@@ -13,8 +13,8 @@
 //! - Macros: [`spawn!`], [`send!`], [`recv!`]
 //! - Derive macro: [`Task`] (for `#[derive(Task)]`)
 
-pub use crate::core::errors::{RecvError, RecvResult, SendResult};
 pub use crate::core::Mailbox;
+pub use crate::core::errors::{RecvError, RecvResult, SendResult};
 pub use crate::task::{Runnable, Task, TaskHandle, TaskRef};
 
 // Macros are already exported at crate root via #[macro_export]
