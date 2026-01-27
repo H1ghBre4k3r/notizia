@@ -13,9 +13,18 @@ use super::errors::{RecvError, RecvResult};
 /// It wraps an `UnboundedReceiver` and manages its lifecycle using Arc and Mutex
 /// to enable the take-recv-put pattern required for async receiving without
 /// holding locks.
-#[derive(Clone)]
 pub struct Mailbox<T> {
     pub(crate) receiver: Arc<Mutex<Option<UnboundedReceiver<T>>>>,
+}
+
+// Manual Clone implementation to avoid requiring T: Clone
+// Arc<Mutex<Option<UnboundedReceiver<T>>>> is Clone regardless of T
+impl<T> Clone for Mailbox<T> {
+    fn clone(&self) -> Self {
+        Mailbox {
+            receiver: self.receiver.clone(),
+        }
+    }
 }
 
 impl<T> Default for Mailbox<T> {

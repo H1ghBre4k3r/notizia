@@ -74,12 +74,13 @@ The `notizia/examples/` directory contains complete, runnable examples demonstra
 - **`03_supervisor.rs`** - Supervisor managing a worker pool
 - **`04_error_handling.rs`** - Error recovery and channel closure handling
 - **`05_macro_vs_methods.rs`** - Comparison of macro and method-based API styles
+- **`06_call_cast.rs`** - Synchronous call/cast request-response patterns
 
 Run examples from the workspace root:
 ```bash
 cargo run -p notizia --example 01_basic_task
 cargo run -p notizia --example 02_bidirectional
-cargo run -p notizia --example 03_supervisor
+cargo run -p notizia --example 06_call_cast
 ```
 
 Or from the `notizia/` directory:
@@ -179,6 +180,72 @@ impl Runnable<Message> for Worker {
 ```
 
 This explicit error handling enables production-ready reliability and graceful shutdown behavior.
+
+## Request-Response Patterns
+
+Notizia supports both asynchronous (fire-and-forget) and synchronous (request-response) messaging patterns, inspired by Erlang/Elixir GenServer semantics.
+
+### Asynchronous: cast!
+
+Use `cast!` (or `send!`) for fire-and-forget messages that don't require a response:
+
+```rust
+use notizia::prelude::*;
+
+#[derive(Debug)]
+enum Msg {
+    Increment,
+}
+
+cast!(worker, Msg::Increment)?;  // Returns immediately
+```
+
+### Synchronous: call!
+
+Use `call!` for request-response interactions that block until a reply is received:
+
+```rust
+use notizia::prelude::*;
+use notizia::call;
+use tokio::sync::oneshot;
+
+#[derive(Debug)]
+enum Msg {
+    GetCount { reply_to: oneshot::Sender<u32> },
+    Increment,
+}
+
+// Block until response (5 second default timeout)
+let count = call!(worker, |tx| Msg::GetCount { reply_to: tx }).await?;
+
+// Custom timeout (1 second)
+let count = call!(worker, |tx| Msg::GetCount { reply_to: tx }, timeout = 1000).await?;
+```
+
+The `call!` macro automatically creates a oneshot channel, sends the request, and waits for the response with timeout protection.
+
+**Example: Handling call messages in your task**
+
+```rust
+impl Runnable<Msg> for Worker {
+    async fn start(&self) {
+        loop {
+            match recv!(self) {
+                Ok(Msg::GetCount { reply_to }) => {
+                    let count = self.count.load(Ordering::SeqCst);
+                    let _ = reply_to.send(count); // Send response
+                }
+                Ok(Msg::Increment) => {
+                    self.count.fetch_add(1, Ordering::SeqCst);
+                }
+                Err(_) => break,
+            }
+        }
+    }
+}
+```
+
+See `examples/06_call_cast.rs` for a complete demonstration.
 
 ## Workspace Overview
 
