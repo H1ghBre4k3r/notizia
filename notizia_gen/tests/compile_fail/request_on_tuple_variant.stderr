@@ -1,0 +1,8 @@
+error: Cannot apply #[request] to tuple variants.
+       Convert to a struct variant or unit variant.
+       Example: Instead of `GetCount(u32)`, use `GetCount { id: u32 }` or just `GetCount`
+ --> tests/compile_fail/request_on_tuple_variant.rs:5:5
+  |
+5 | /     #[request(reply = u32)]
+6 | |     GetValue(String),
+  | |____________________^
