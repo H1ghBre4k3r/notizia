@@ -275,12 +275,18 @@
 //! is received. The macro automatically creates a oneshot channel, sends the request, and
 //! waits for the response with timeout protection.
 //!
+//! When using the [`#[message]`](crate::message) macro to define request variants,
+//! you can use simplified syntax:
+//!
 //! ```rust,no_run
 //! # use notizia::prelude::*;
-//! # use notizia::call;
-//! # use tokio::sync::oneshot;
+//! # use notizia::{call, message};
+//! # #[message]
 //! # #[derive(Debug)]
-//! # enum Msg { GetStatus { reply_to: oneshot::Sender<u32> } }
+//! # enum Msg {
+//! #     #[request(reply = u32)]
+//! #     GetStatus,
+//! # }
 //! # #[derive(Task)]
 //! # #[task(message = Msg)]
 //! # struct Worker;
@@ -289,11 +295,36 @@
 //! # async fn main() -> Result<(), CallError> {
 //! # let worker = Worker;
 //! # let handle = spawn!(worker);
-//! // Default 5 second timeout
-//! let status = call!(handle, |tx| Msg::GetStatus { reply_to: tx }).await?;
+//! // Simple syntax for request variants (default 5 second timeout)
+//! let status = call!(handle, Msg::GetStatus).await?;
 //!
-//! // Custom timeout (1 second = 1000ms)
-//! let status = call!(handle, |tx| Msg::GetStatus { reply_to: tx }, timeout = 1000).await?;
+//! // With custom timeout (1 second = 1000ms)
+//! let status = call!(handle, Msg::GetStatus, timeout = 1000).await?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! For request variants with additional fields, use closure syntax:
+//!
+//! ```rust,no_run
+//! # use notizia::prelude::*;
+//! # use notizia::{call, message};
+//! # #[message]
+//! # #[derive(Debug)]
+//! # enum Msg {
+//! #     #[request(reply = u32)]
+//! #     Echo { id: u32 },
+//! # }
+//! # #[derive(Task)]
+//! # #[task(message = Msg)]
+//! # struct Worker;
+//! # impl Runnable<Msg> for Worker { async fn start(&self) {} }
+//! # #[tokio::main]
+//! # async fn main() -> Result<(), CallError> {
+//! # let worker = Worker;
+//! # let handle = spawn!(worker);
+//! // Closure syntax for variants with additional data
+//! let result = call!(handle, |tx| Msg::Echo { id: 42, reply_to: tx }).await?;
 //! # Ok(())
 //! # }
 //! ```

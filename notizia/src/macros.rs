@@ -102,12 +102,14 @@ macro_rules! send {
 ///
 /// ```no_run
 /// # use notizia::prelude::*;
-/// # use notizia::call;
+/// # use notizia::{call, message};
 /// # use tokio::sync::oneshot;
+/// # #[message]
 /// # #[derive(Debug)]
-/// enum Msg {
-///     GetStatus { reply_to: oneshot::Sender<u32> },
-/// }
+/// # enum Msg {
+/// #     #[request(reply = u32)]
+/// #     GetStatus,
+/// # }
 /// # #[derive(Task)]
 /// # #[task(message = Msg)]
 /// # struct Worker;
@@ -117,22 +119,24 @@ macro_rules! send {
 /// # let worker = Worker;
 /// # let handle = spawn!(worker);
 ///
-/// // Default 5 second timeout
-/// let status = call!(handle, |tx| Msg::GetStatus { reply_to: tx }).await?;
+/// // Simple syntax for request variants without additional data
+/// let status = call!(handle, Msg::GetStatus).await?;
 ///
-/// // Custom timeout (1 second)
-/// let status = call!(handle, |tx| Msg::GetStatus { reply_to: tx }, timeout = 1000).await?;
+/// // With custom timeout (1 second)
+/// let status = call!(handle, Msg::GetStatus, timeout = 1000).await?;
+///
+/// // For variants with additional data, use closure syntax:
+/// // call!(handle, |tx| Msg::Echo { id: 42, reply_to: tx }).await?;
 /// # Ok(())
 /// # }
 #[macro_export]
 macro_rules! call {
-    ($task:expr, $msg_constructor:expr) => {
-        call!($task, $msg_constructor, timeout = 5000)
-    };
-    ($task:expr, $msg_constructor:expr, timeout = $timeout:expr) => {{
+    // Pattern 1: Closure syntax with timeout (implementation)
+    // e.g., call!(handle, |tx| Msg::Echo { id: 42, reply_to: tx }, timeout = 1000)
+    ($task:expr, |$tx:ident| $msg:expr, timeout = $timeout:expr) => {{
         async {
-            let (tx, rx) = $crate::tokio::sync::oneshot::channel();
-            let msg = $msg_constructor(tx);
+            let ($tx, rx) = $crate::tokio::sync::oneshot::channel();
+            let msg = $msg;
             $task
                 .send(msg)
                 .map_err(|_| $crate::core::errors::CallError::SendError)?;
@@ -143,6 +147,25 @@ macro_rules! call {
                 .map_err(|_| $crate::core::errors::CallError::ChannelClosed)
         }
     }};
+
+    // Pattern 2: Closure syntax without timeout
+    // e.g., call!(handle, |tx| Msg::Echo { id: 42, reply_to: tx })
+    ($task:expr, |$tx:ident| $msg:expr) => {
+        call!($task, |$tx| $msg, timeout = 5000)
+    };
+
+    // Pattern 3: Simple variant path with timeout (new ergonomic syntax)
+    // Match using token trees to detect :: pattern
+    // e.g., call!(handle, CounterMsg::GetStatus, timeout = 1000)
+    ($task:expr, $first:ident :: $($rest:tt)::+, timeout = $timeout:expr) => {
+        call!($task, |__notizia_tx| $first :: $($rest)::+ { reply_to: __notizia_tx }, timeout = $timeout)
+    };
+
+    // Pattern 4: Simple variant path without timeout
+    // e.g., call!(handle, CounterMsg::GetStatus)
+    ($task:expr, $first:ident :: $($rest:tt)::+) => {
+        call!($task, $first :: $($rest)::+, timeout = 5000)
+    };
 }
 
 /// Cast a message to a task (fire-and-forget, asynchronous).
