@@ -1,0 +1,6 @@
+error: Expected 'reply' parameter.
+       Use: #[request(reply = YourReplyType)]
+ --> tests/compile_fail/request_wrong_param_name.rs:5:15
+  |
+5 |     #[request(response = u32)]
+  |               ^^^^^^^^

@@ -1,0 +1,6 @@
+error: The #[request] attribute requires parameters.
+       Use: #[request(reply = YourReplyType)]
+ --> tests/compile_fail/request_missing_reply_param.rs:5:7
+  |
+5 |     #[request]
+  |       ^^^^^^^

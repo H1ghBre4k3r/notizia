@@ -226,6 +226,44 @@
 //! }
 //! ```
 //!
+//! ## Message Enum Macros
+//!
+//! The [`#[message]`](crate::message) attribute macro simplifies message enum definitions by
+//! automatically injecting `reply_to` fields for request variants.
+//!
+//! ### Without `#[message]` macro
+//!
+//! ```rust,no_run
+//! # use tokio::sync::oneshot;
+//! #[derive(Debug)]
+//! enum CounterMsg {
+//!     GetCount { reply_to: oneshot::Sender<u32> },
+//!     GetStats { reply_to: oneshot::Sender<String> },
+//!     Increment,
+//! }
+//! ```
+//!
+//! ### With `#[message]` macro
+//!
+//! ```rust,no_run
+//! # use notizia::message;
+//! #[message]
+//! #[derive(Debug)]
+//! enum CounterMsg {
+//!     #[request(reply = u32)]
+//!     GetCount,
+//!     
+//!     #[request(reply = String)]
+//!     GetStats,
+//!     
+//!     Increment,
+//! }
+//! ```
+//!
+//! The `#[request(reply = T)]` attribute automatically adds a
+//! `reply_to: tokio::sync::oneshot::Sender<T>` field to the variant,
+//! reducing boilerplate and making the intent clearer.
+//!
 //! ## Request-Response Patterns
 //!
 //! Notizia supports both synchronous (request-response) and asynchronous (fire-and-forget)
@@ -356,6 +394,10 @@ pub use crate::core::lifecycle::{ShutdownError, ShutdownResult, TerminateReason}
 // until we migrate to derive macro syntax
 #[doc(inline)]
 pub use notizia_gen::Task;
+
+// Re-export message macro from notizia_gen
+#[doc(inline)]
+pub use notizia_gen::message;
 
 // Re-export Tokio for macro usage (hidden from docs)
 #[doc(hidden)]
