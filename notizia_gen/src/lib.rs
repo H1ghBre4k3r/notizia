@@ -1,8 +1,8 @@
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::{
-    parse_macro_input, Attribute, DeriveInput, Error, Expr, Field, Fields, ItemEnum, Meta,
-    MetaNameValue, Result, Type, Variant,
+    Attribute, DeriveInput, Error, Expr, Field, Fields, ItemEnum, Meta, MetaNameValue, Result,
+    Type, Variant, parse_macro_input,
 };
 
 /// Derive macro for implementing the Task trait.
@@ -261,7 +261,7 @@ fn impl_message_macro(input: &ItemEnum) -> Result<quote::__private::TokenStream>
     let variants = input
         .variants
         .iter()
-        .map(|variant| process_variant(variant))
+        .map(process_variant)
         .collect::<Result<Vec<_>>>()?;
 
     // Generate the enum

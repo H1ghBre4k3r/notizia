@@ -11,6 +11,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 
 // Custom type for stats response
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct CounterStats {
     current: u32,
     total_operations: u64,
@@ -21,14 +22,15 @@ struct CounterStats {
 //   reply_to: tokio::sync::oneshot::Sender<T>
 #[message]
 #[derive(Debug)]
+#[allow(dead_code)]
 enum CounterMsg {
     // Request variants - will have reply_to field injected
     #[request(reply = u32)]
     GetCount,
-    
+
     #[request(reply = CounterStats)]
     GetStats,
-    
+
     // Cast variants - no reply_to field (fire-and-forget)
     Increment,
     Decrement,
@@ -48,7 +50,7 @@ struct Counter {
 impl Runnable<CounterMsg> for Counter {
     async fn start(&self) {
         println!("Counter task started");
-        
+
         loop {
             match recv!(self) {
                 // Handle request messages - send response via reply_to
@@ -59,7 +61,7 @@ impl Runnable<CounterMsg> for Counter {
                         eprintln!("Failed to send count response");
                     }
                 }
-                
+
                 Ok(CounterMsg::GetStats { reply_to }) => {
                     let stats = CounterStats {
                         current: self.count.load(Ordering::SeqCst),
@@ -70,44 +72,44 @@ impl Runnable<CounterMsg> for Counter {
                         eprintln!("Failed to send stats response");
                     }
                 }
-                
+
                 // Handle cast messages - no response needed
                 Ok(CounterMsg::Increment) => {
                     self.count.fetch_add(1, Ordering::SeqCst);
                     self.operations.fetch_add(1, Ordering::SeqCst);
                     println!("Incremented counter");
                 }
-                
+
                 Ok(CounterMsg::Decrement) => {
                     self.count.fetch_sub(1, Ordering::SeqCst);
                     self.operations.fetch_add(1, Ordering::SeqCst);
                     println!("Decremented counter");
                 }
-                
+
                 Ok(CounterMsg::Add(value)) => {
                     self.count.fetch_add(value, Ordering::SeqCst);
                     self.operations.fetch_add(1, Ordering::SeqCst);
                     println!("Added {} to counter", value);
                 }
-                
+
                 Ok(CounterMsg::Reset) => {
                     self.count.store(0, Ordering::SeqCst);
                     self.operations.fetch_add(1, Ordering::SeqCst);
                     println!("Reset counter to 0");
                 }
-                
+
                 Ok(CounterMsg::Stop) => {
                     println!("Stop message received, shutting down");
                     break;
                 }
-                
+
                 Err(_) => {
                     println!("Channel closed, shutting down");
                     break;
                 }
             }
         }
-        
+
         println!("Counter task stopped");
     }
 }
@@ -115,54 +117,52 @@ impl Runnable<CounterMsg> for Counter {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== Message Macro Demo ===\n");
-    
+
     // Create and spawn counter task
     let counter = Counter {
         count: Arc::new(AtomicU32::new(0)),
         operations: Arc::new(AtomicU32::new(0)),
     };
-    
+
     let handle = spawn!(counter);
-    
+
     // Demonstrate cast operations (fire-and-forget)
     println!("--- Cast Operations (Fire-and-Forget) ---");
     cast!(handle, CounterMsg::Increment)?;
     cast!(handle, CounterMsg::Increment)?;
     cast!(handle, CounterMsg::Add(5))?;
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-    
+
     // Demonstrate call operations (request-response)
     println!("\n--- Call Operations (Request-Response) ---");
-    
+
     // Get current count with default timeout (5 seconds)
-    let count = call!(handle, |tx| CounterMsg::GetCount { reply_to: tx }).await?;
+    // Using new simple syntax - no closure needed!
+    let count = call!(handle, CounterMsg::GetCount).await?;
     println!("Current count: {}\n", count);
-    
+
     // More operations
     cast!(handle, CounterMsg::Decrement)?;
     cast!(handle, CounterMsg::Add(10))?;
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-    
+
     // Get stats with custom timeout (1 second)
-    let stats = call!(
-        handle,
-        |tx| CounterMsg::GetStats { reply_to: tx },
-        timeout = 1000
-    ).await?;
+    // Simple syntax also supports custom timeouts
+    let stats = call!(handle, CounterMsg::GetStats, timeout = 1000).await?;
     println!("Statistics: {:?}\n", stats);
-    
+
     // Get final count
-    let final_count = call!(handle, |tx| CounterMsg::GetCount { reply_to: tx }).await?;
+    let final_count = call!(handle, CounterMsg::GetCount).await?;
     println!("Final count: {}", final_count);
-    
+
     // Stop the counter
     println!("\n--- Shutting Down ---");
     cast!(handle, CounterMsg::Stop)?;
-    
+
     // Wait for task to complete
     handle.join().await?;
-    
+
     println!("\n=== Demo Complete ===");
-    
+
     Ok(())
 }

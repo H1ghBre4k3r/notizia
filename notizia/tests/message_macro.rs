@@ -10,6 +10,7 @@ use tokio::sync::oneshot;
 fn message_macro_injects_reply_to_field() {
     #[message]
     #[derive(Debug)]
+    #[allow(dead_code)]
     enum TestMsg {
         #[request(reply = u32)]
         GetValue,
@@ -26,6 +27,7 @@ fn message_macro_injects_reply_to_field() {
 fn message_macro_preserves_cast_variants() {
     #[message]
     #[derive(Debug)]
+    #[allow(dead_code)]
     enum TestMsg {
         #[request(reply = String)]
         GetStatus,
@@ -45,6 +47,7 @@ fn message_macro_preserves_cast_variants() {
 fn message_macro_works_with_existing_fields() {
     #[message]
     #[derive(Debug)]
+    #[allow(dead_code)]
     enum TestMsg {
         #[request(reply = u32)]
         Echo {
@@ -65,12 +68,14 @@ fn message_macro_works_with_existing_fields() {
 #[test]
 fn message_macro_works_with_multiple_requests() {
     #[derive(Clone, Debug)]
+    #[allow(dead_code)]
     struct Stats {
         count: u32,
     }
 
     #[message]
     #[derive(Debug)]
+    #[allow(dead_code)]
     enum TestMsg {
         #[request(reply = u32)]
         GetCount,
@@ -98,6 +103,7 @@ fn message_macro_works_with_multiple_requests() {
 fn message_macro_works_with_tuple_cast_variants() {
     #[message]
     #[derive(Debug)]
+    #[allow(dead_code)]
     enum TestMsg {
         #[request(reply = u32)]
         GetValue,
@@ -115,12 +121,14 @@ fn issue5_exact_syntax_works() {
     // This is the exact syntax from issue #5
     // Note: Can't derive Clone because oneshot::Sender doesn't implement Clone
     #[derive(Clone, Debug)]
+    #[allow(dead_code)]
     struct StatusReply {
         status: String,
     }
 
     #[message]
     #[derive(Debug)]
+    #[allow(dead_code)]
     enum Msg {
         #[request(reply = StatusReply)]
         GetStatus,
